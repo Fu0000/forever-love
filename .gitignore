@@ -3,3 +3,6 @@ dist
 coverage
 .env
 *.log
+.DS_Store
+front/backend/.env.local
+front/test-results

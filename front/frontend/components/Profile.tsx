@@ -1,0 +1,138 @@
+import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { UserFrontend, CoupleData } from '../types';
+import { X, Camera, Sparkles, LogOut, Edit2, Check } from 'lucide-react';
+import { Button } from './ui/Button';
+
+interface ProfileProps {
+  user: UserFrontend;
+  coupleData: CoupleData;
+  onClose: () => void;
+  onUpdateUser: (user: UserFrontend) => void;
+  onLogout: () => void;
+}
+
+export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onUpdateUser, onLogout }) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [name, setName] = useState(user.name);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpdateUser({ ...user, avatar: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const generateAvatar = () => {
+    const seed = Math.random().toString(36).substring(7);
+    const newAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+    onUpdateUser({ ...user, avatar: newAvatar });
+  };
+
+  const saveName = () => {
+    if (name.trim()) {
+      onUpdateUser({ ...user, name });
+      setIsEditingName(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: '100%' }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: '100%' }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      className="fixed inset-0 z-[100] bg-white flex flex-col"
+    >
+      <div className="p-6 flex justify-between items-center border-b border-gray-100">
+        <h2 className="text-2xl font-black font-cute text-gray-800">我的主页</h2>
+        <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex flex-col items-center mb-10">
+          <div className="relative mb-4 group">
+            <div className="w-32 h-32 rounded-full border-4 border-rose-100 overflow-hidden shadow-xl">
+              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bottom-0 right-0 bg-rose-500 text-white p-2.5 rounded-full shadow-lg hover:bg-rose-600 transition-colors"
+            >
+              <Camera size={18} />
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+          </div>
+          
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={generateAvatar}
+            className="mb-6 rounded-full px-4 text-xs"
+          >
+            <Sparkles size={14} className="mr-1" /> AI 生成头像
+          </Button>
+
+          <div className="flex items-center gap-2 mb-1">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="border-b-2 border-rose-300 focus:outline-none text-2xl font-black text-center w-40 font-cute"
+                  autoFocus
+                />
+                <button onClick={saveName} className="text-green-500"><Check size={24} /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h3 className="text-2xl font-black text-gray-800 font-cute">{user.name}</h3>
+                <button onClick={() => setIsEditingName(true)} className="text-gray-400 hover:text-rose-500">
+                  <Edit2 size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-gray-400 text-sm">ID: {user.id.slice(0, 8)}...</p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-100">
+            <h4 className="font-bold text-rose-800 mb-4">关于我们</h4>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-600">配对码</span>
+              <span className="font-mono font-bold text-gray-800 bg-white px-2 py-1 rounded">{coupleData.pairCode}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">纪念日</span>
+              <span className="font-bold text-gray-800">
+                {coupleData.anniversaryDate ? new Date(coupleData.anniversaryDate).toLocaleDateString() : '未设置'}
+              </span>
+            </div>
+          </div>
+
+          <Button 
+            variant="outline" 
+            className="w-full py-4 rounded-2xl text-red-500 border-red-200 hover:bg-red-50"
+            onClick={onLogout}
+          >
+            <LogOut size={18} className="mr-2" /> 退出登录
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
