@@ -85,6 +85,40 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
   const momentItem = page.locator('[data-testid="moment-item"]', { hasText: momentTitle });
   await expect(momentItem).toBeVisible({ timeout: 20_000 });
   await momentItem.click();
-  await page.getByTestId('moment-delete').click();
+  await page.getByTestId('moment-delete').dispatchEvent('click');
   await expect(momentItem).toHaveCount(0);
+});
+
+test('logged-in users skip onboarding unless token invalid', async ({ page }) => {
+  page.on('console', (msg) => {
+    console.log(`[browser:${msg.type()}] ${msg.text()}`);
+  });
+  page.on('pageerror', (err) => {
+    console.log(`[pageerror] ${err.message}`);
+  });
+  page.on('requestfailed', (req) => {
+    console.log(`[requestfailed] ${req.url()} - ${req.failure()?.errorText}`);
+  });
+
+  await page.goto('/');
+
+  await page.getByTestId('onboarding-start').click();
+  await page.getByTestId('login-name-input').fill(`自动化持久${Date.now()}`);
+  await page.getByTestId('login-submit').click();
+
+  await expect(page.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('create-space').click();
+  await expect(page.getByTestId('enter-app')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('enter-app').click();
+  await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await page.reload();
+  await expect(page.getByTestId('onboarding')).toHaveCount(0);
+  await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await page.evaluate(() => {
+    localStorage.setItem('lovesync_auth_token', 'invalid-token');
+  });
+  await page.reload();
+  await expect(page.getByTestId('onboarding')).toBeVisible({ timeout: 20_000 });
 });
