@@ -1,0 +1,42 @@
+{
+  "reportVersion": "1.0",
+  "generatedAt": "2026-02-24T16:25:25Z",
+  "environment": {
+    "executionHost": "8.140.214.182",
+    "baseUrl": "http://127.0.0.1:3000/api/v1",
+    "publicUrl": "https://foever-love.chuhaibox.com/api/v1"
+  },
+  "summary": {
+    "status": "passed",
+    "total": 22,
+    "passed": 22,
+    "failed": 0
+  },
+  "steps": [
+    { "name": "health", "method": "GET", "path": "/health", "statusCode": 200, "status": "ok" },
+    { "name": "login_user_a", "method": "POST", "path": "/auth/login", "statusCode": 201, "status": "ok" },
+    { "name": "login_user_b", "method": "POST", "path": "/auth/login", "statusCode": 201, "status": "ok" },
+    { "name": "users_me", "method": "GET", "path": "/users/me", "statusCode": 200, "status": "ok" },
+    { "name": "users_get", "method": "GET", "path": "/users/{userId}", "statusCode": 200, "status": "ok" },
+    { "name": "users_patch", "method": "PATCH", "path": "/users/{userId}", "statusCode": 200, "status": "ok" },
+    { "name": "couple_create", "method": "POST", "path": "/couples", "statusCode": 201, "status": "ok" },
+    { "name": "couple_join", "method": "POST", "path": "/couples/join", "statusCode": 200, "status": "ok" },
+    { "name": "couple_get", "method": "GET", "path": "/couples/{coupleId}", "statusCode": 200, "status": "ok" },
+    { "name": "couple_patch", "method": "PATCH", "path": "/couples/{coupleId}", "statusCode": 200, "status": "ok" },
+    { "name": "note_create", "method": "POST", "path": "/couples/{coupleId}/notes", "statusCode": 201, "status": "ok" },
+    { "name": "note_list", "method": "GET", "path": "/couples/{coupleId}/notes", "statusCode": 200, "status": "ok" },
+    { "name": "note_delete", "method": "DELETE", "path": "/notes/{noteId}", "statusCode": 204, "status": "ok" },
+    { "name": "quest_create", "method": "POST", "path": "/couples/{coupleId}/quests", "statusCode": 201, "status": "ok" },
+    { "name": "quest_list", "method": "GET", "path": "/couples/{coupleId}/quests", "statusCode": 200, "status": "ok" },
+    { "name": "quest_patch", "method": "PATCH", "path": "/quests/{questId}", "statusCode": 200, "status": "ok" },
+    { "name": "quest_complete", "method": "POST", "path": "/quests/{questId}/complete", "statusCode": 201, "status": "ok" },
+    { "name": "quest_delete", "method": "DELETE", "path": "/quests/{questId}", "statusCode": 204, "status": "ok" },
+    { "name": "moment_create", "method": "POST", "path": "/couples/{coupleId}/moments", "statusCode": 201, "status": "ok" },
+    { "name": "moment_list", "method": "GET", "path": "/couples/{coupleId}/moments", "statusCode": 200, "status": "ok" },
+    { "name": "moment_delete", "method": "DELETE", "path": "/moments/{momentId}", "statusCode": 204, "status": "ok" },
+    { "name": "media_presign", "method": "POST", "path": "/media/presign-upload", "statusCode": 200, "status": "ok" }
+  ],
+  "notes": [
+    "Login and quest completion returned 201 on this run; both are accepted as successful responses."
+  ]
+}
