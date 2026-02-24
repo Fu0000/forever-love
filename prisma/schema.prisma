@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+}
+
+model User {
+  id              String   @id @db.VarChar(32)
+  clientUserId    String?  @unique @db.VarChar(64)
+  name            String   @db.VarChar(64)
+  avatarUrl       String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdCouples  Couple[] @relation("CreatorCouples")
+  partnerCouples  Couple[] @relation("PartnerCouples")
+  notes           Note[]
+  createdQuests   Quest[]  @relation("QuestCreatedBy")
+  completedQuests Quest[]  @relation("QuestCompletedBy")
+}
+
+model Couple {
+  id              String    @id @db.VarChar(32)
+  pairCode        String    @unique @db.VarChar(6)
+  creatorId       String    @unique @db.VarChar(32)
+  partnerId       String?   @unique @db.VarChar(32)
+  anniversaryDate DateTime? @db.Date
+  intimacyScore   Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  creator         User      @relation("CreatorCouples", fields: [creatorId], references: [id])
+  partner         User?     @relation("PartnerCouples", fields: [partnerId], references: [id])
+  notes           Note[]
+  quests          Quest[]
+  moments         Moment[]
+
+  @@index([pairCode])
+}
+
+model Note {
+  id        String   @id @db.VarChar(32)
+  coupleId  String   @db.VarChar(32)
+  authorId  String   @db.VarChar(32)
+  content   String   @db.Text
+  color     String?  @db.VarChar(32)
+  mediaUrl  String?  @db.Text
+  mediaType String?  @db.VarChar(16)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  couple    Couple   @relation(fields: [coupleId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([coupleId, createdAt, id(sort: Desc)])
+  @@index([authorId])
+}
+
+model Quest {
+  id          String      @id @db.VarChar(32)
+  coupleId    String      @db.VarChar(32)
+  title       String      @db.VarChar(120)
+  description String?     @db.Text
+  points      Int
+  type        String      @db.VarChar(64)
+  status      QuestStatus @default(ACTIVE)
+  createdBy   String      @db.VarChar(32)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  completedAt DateTime?
+  completedBy String?     @db.VarChar(32)
+  couple      Couple      @relation(fields: [coupleId], references: [id])
+  creator     User        @relation("QuestCreatedBy", fields: [createdBy], references: [id])
+  completer   User?       @relation("QuestCompletedBy", fields: [completedBy], references: [id])
+
+  @@index([coupleId, status, createdAt, id(sort: Desc)])
+}
+
+model Moment {
+  id          String   @id @db.VarChar(32)
+  coupleId    String   @db.VarChar(32)
+  title       String   @db.VarChar(120)
+  description String?  @db.Text
+  date        DateTime @db.Date
+  imageUrl    String   @db.Text
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  couple      Couple   @relation(fields: [coupleId], references: [id])
+
+  @@index([coupleId, createdAt, id(sort: Desc)])
+  @@index([tags], type: Gin)
+}
