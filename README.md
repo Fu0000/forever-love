@@ -6,7 +6,7 @@ A production-oriented Node service implementing the v1 REST API for `auth / user
 
 - Base URL: `https://{host}:{port}/api/v1`
 - Local default: `http://localhost:3000/api/v1`
-- OpenAPI docs: `http://localhost:3000/api/docs`
+- OpenAPI docs: `https://foever-love.chuhaibox.com/api/docs`
 
 ## Global Conventions
 
