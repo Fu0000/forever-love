@@ -23,7 +23,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorBody}`);
+    const error = new Error(
+      `API Error: ${response.status} ${response.statusText} - ${errorBody}`,
+    ) as Error & { status?: number; body?: string };
+    error.status = response.status;
+    error.body = errorBody;
+    throw error;
   }
 
   // Handle 204 No Content
@@ -112,6 +117,13 @@ export const storageService = {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(COUPLE_ID_KEY);
+  },
+
+  hasToken: (): boolean => Boolean(localStorage.getItem(TOKEN_KEY)),
+
+  getCurrentUser: async (): Promise<UserFrontend> => {
+    const user = await apiRequest('/users/me');
+    return mapUserToFrontend(user);
   },
 
   // --- Auth & User ---
@@ -274,6 +286,9 @@ export const storageService = {
       
       return null;
     } catch (e) {
+      if ((e as { status?: number })?.status === 401) {
+        throw e;
+      }
       return null;
     }
   },

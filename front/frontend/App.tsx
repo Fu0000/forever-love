@@ -22,6 +22,7 @@ const App: React.FC = () => {
   
   const [currentUser, setCurrentUser] = useState<UserFrontend | null>(null);
   const [coupleData, setCoupleData] = useState<CoupleData | null>(null);
+  const [hasAuth, setHasAuth] = useState(false);
 
   // Load initial state
   useEffect(() => {
@@ -33,13 +34,24 @@ const App: React.FC = () => {
         // You might want to show a specific error state here
       }
 
-      const userId = storageService.getSession();
-      if (userId) {
+      const tokenExists = storageService.hasToken();
+      setHasAuth(tokenExists);
+
+      if (tokenExists) {
         try {
+          let userId = storageService.getSession();
+          let me: UserFrontend | null = null;
+
+          if (!userId) {
+            me = await storageService.getCurrentUser();
+            userId = me.id;
+            storageService.saveSession(userId);
+          }
+
           const data = await storageService.findCoupleByUserId(userId);
           if (data) {
             setCoupleData(data);
-            const user = data.users.find(u => u.id === userId);
+            const user = data.users.find(u => u.id === userId) || me;
             setCurrentUser(user || null);
             
             const [notes, quests, moments] = await Promise.all([
@@ -49,10 +61,18 @@ const App: React.FC = () => {
             ]);
             
             setCoupleData(prev => prev ? ({ ...prev, notes, quests, moments }) : null);
+          } else if (me) {
+            setCurrentUser(me);
           }
         } catch (e) {
-          console.error("Failed to initialize app", e);
-          storageService.clearSession();
+          if ((e as { status?: number })?.status === 401) {
+            storageService.clearSession();
+            setHasAuth(false);
+            setCurrentUser(null);
+            setCoupleData(null);
+          } else {
+            console.error("Failed to initialize app", e);
+          }
         }
       }
       setIsLoading(false);
@@ -63,6 +83,7 @@ const App: React.FC = () => {
   const handleLogin = async (user: UserFrontend, data: CoupleData) => {
     setCurrentUser(user);
     setCoupleData(data);
+    setHasAuth(true);
   };
 
   const handleLogout = () => {
@@ -70,6 +91,7 @@ const App: React.FC = () => {
     setCurrentUser(null);
     setCoupleData(null);
     setShowProfile(false);
+    setHasAuth(false);
   };
 
   const handleUpdateUser = async (updatedUser: UserFrontend) => {
@@ -255,8 +277,15 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser || !coupleData) {
+  if (!hasAuth) {
     return <Onboarding onComplete={handleLogin} />;
+  }
+  if (!currentUser || !coupleData) {
+    return (
+      <div className="min-h-screen bg-rose-50 flex items-center justify-center text-rose-500 font-black font-cute">
+        正在加载你们的空间...
+      </div>
+    );
   }
 
   const partnerUser = coupleData.users.find(u => u.id !== currentUser.id) || {
