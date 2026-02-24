@@ -5,6 +5,7 @@ const API_BASE_URL =
 const TOKEN_KEY = 'lovesync_auth_token';
 const USER_KEY = 'lovesync_current_user_id';
 const CLIENT_ID_KEY = 'lovesync_client_user_id';
+const COUPLE_ID_KEY = 'lovesync_couple_id';
 
 // Helper for making authenticated requests
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -74,6 +75,14 @@ const getOrCreateClientUserId = (): string => {
   return clientUserId;
 };
 
+const saveCoupleId = (coupleId: string | null) => {
+  if (coupleId) {
+    localStorage.setItem(COUPLE_ID_KEY, coupleId);
+  } else {
+    localStorage.removeItem(COUPLE_ID_KEY);
+  }
+};
+
 export const storageService = {
   // --- Health Check ---
   checkHealth: async (): Promise<boolean> => {
@@ -102,6 +111,7 @@ export const storageService = {
   clearSession: () => {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(COUPLE_ID_KEY);
   },
 
   // --- Auth & User ---
@@ -168,6 +178,7 @@ export const storageService = {
       method: 'POST',
       body: JSON.stringify({}), 
     });
+    saveCoupleId(couple.id);
     // Fetch full data to get users array etc.
     return storageService.getCoupleData(couple.id) as Promise<CoupleData>;
   },
@@ -177,6 +188,7 @@ export const storageService = {
       method: 'POST',
       body: JSON.stringify({ pairCode }), // Changed from coupleId to pairCode based on DB schema
     });
+    saveCoupleId(couple.id);
     return storageService.getCoupleData(couple.id) as Promise<CoupleData>;
   },
 
@@ -202,13 +214,15 @@ export const storageService = {
         } catch (e) { console.warn("Failed to fetch partner", e); }
       }
 
-      return {
+      const result = {
         ...couple,
         users,
         notes: [], // Loaded separately
         quests: [], // Loaded separately
         moments: [] // Loaded separately
       };
+      saveCoupleId(couple.id);
+      return result;
     } catch (error) {
       console.error("Failed to load couple data", error);
       return null;
@@ -231,6 +245,15 @@ export const storageService = {
 
   findCoupleByUserId: async (userId: string): Promise<CoupleData | null> => {
     try {
+      const savedCoupleId = localStorage.getItem(COUPLE_ID_KEY);
+      if (savedCoupleId) {
+        const cached = await storageService.getCoupleData(savedCoupleId);
+        if (cached) {
+          return cached;
+        }
+        localStorage.removeItem(COUPLE_ID_KEY);
+      }
+
       const me = await apiRequest('/users/me');
       // Assuming /users/me returns the user object which might have a coupleId relation 
       // OR we need to query couples where creatorId or partnerId is me.
