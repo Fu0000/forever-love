@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 body {
   background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
@@ -38,4 +36,3 @@ body {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
-
