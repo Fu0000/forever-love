@@ -23,10 +23,14 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserFrontend | null>(null);
   const [coupleData, setCoupleData] = useState<CoupleData | null>(null);
   const [hasAuth, setHasAuth] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Load initial state
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
+      setInitError(null);
       // Check backend health first
       const isHealthy = await storageService.checkHealth();
       if (!isHealthy) {
@@ -39,30 +43,26 @@ const App: React.FC = () => {
 
       if (tokenExists) {
         try {
-          let userId = storageService.getSession();
-          let me: UserFrontend | null = null;
+          const me = await storageService.getCurrentUser();
+          if (cancelled) return;
+          storageService.saveSession(me.id);
+          setCurrentUser(me);
 
-          if (!userId) {
-            me = await storageService.getCurrentUser();
-            userId = me.id;
-            storageService.saveSession(userId);
-          }
-
-          const data = await storageService.findCoupleByUserId(userId);
+          const data = await storageService.findCoupleByUserId(me.id, me);
+          if (cancelled) return;
           if (data) {
             setCoupleData(data);
-            const user = data.users.find(u => u.id === userId) || me;
-            setCurrentUser(user || null);
             
             const [notes, quests, moments] = await Promise.all([
               storageService.getNotes(data.id),
               storageService.getQuests(data.id),
               storageService.getMoments(data.id)
             ]);
-            
-            setCoupleData(prev => prev ? ({ ...prev, notes, quests, moments }) : null);
-          } else if (me) {
-            setCurrentUser(me);
+
+            if (cancelled) return;
+            setCoupleData(prev =>
+              prev ? ({ ...prev, notes, quests, moments }) : ({ ...data, notes, quests, moments }),
+            );
           }
         } catch (e) {
           if ((e as { status?: number })?.status === 401) {
@@ -72,12 +72,19 @@ const App: React.FC = () => {
             setCoupleData(null);
           } else {
             console.error("Failed to initialize app", e);
+            setInitError('初始化失败：网络异常或服务不可用，请重试。');
           }
         }
       }
-      setIsLoading(false);
+      if (!cancelled) {
+        setIsLoading(false);
+      }
     };
     init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleLogin = async (user: UserFrontend, data: CoupleData) => {
@@ -286,8 +293,24 @@ const App: React.FC = () => {
   }
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-rose-50 flex items-center justify-center text-rose-500 font-black font-cute">
-        正在加载你们的空间...
+      <div className="min-h-screen bg-rose-50 flex flex-col items-center justify-center text-rose-500 font-black font-cute gap-4 px-6 text-center">
+        <div>正在加载你们的空间...</div>
+        {initError && <div className="text-sm text-rose-400 font-sans font-bold">{initError}</div>}
+        <button
+          className="bg-rose-500 text-white px-6 py-3 rounded-full shadow-lg shadow-rose-200 font-black"
+          onClick={() => window.location.reload()}
+        >
+          重试
+        </button>
+        <button
+          className="text-rose-500 underline font-bold text-sm font-sans"
+          onClick={() => {
+            storageService.clearSession();
+            window.location.reload();
+          }}
+        >
+          退出登录
+        </button>
       </div>
     );
   }

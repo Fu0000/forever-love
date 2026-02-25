@@ -21,6 +21,11 @@
   "devDependencies": {
     "@types/node": "latest",
     "@vitejs/plugin-react": "latest",
+    "@tailwindcss/line-clamp": "latest",
+    "@tailwindcss/postcss": "latest",
+    "autoprefixer": "latest",
+    "postcss": "latest",
+    "tailwindcss": "latest",
     "typescript": "latest",
     "vite": "latest"
   }

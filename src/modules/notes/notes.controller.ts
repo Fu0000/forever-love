@@ -10,7 +10,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import type { Response } from 'express';
@@ -25,6 +25,10 @@ export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   @Get('couples/:coupleId/notes')
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'sort', required: false, type: String })
+  @ApiQuery({ name: 'authorId', required: false, type: String })
   list(
     @Param('coupleId') coupleId: string,
     @CurrentUser() user: AuthenticatedUser,

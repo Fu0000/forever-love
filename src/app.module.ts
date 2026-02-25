@@ -15,7 +15,7 @@ import { MomentsModule } from './modules/moments/moments.module';
 import { MediaModule } from './modules/media/media.module';
 import { PairRequestsModule } from './modules/pair-requests/pair-requests.module';
 import { HealthController } from './health.controller';
-import { NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 
 @Module({
   imports: [
@@ -47,6 +47,9 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware).forRoutes({
+      path: '*path',
+      method: RequestMethod.ALL,
+    });
   }
 }

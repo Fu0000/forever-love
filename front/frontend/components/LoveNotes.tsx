@@ -1,16 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Sparkles, Trash2, Image as ImageIcon, X, Heart, Music, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoveNote, UserFrontend } from '../types';
 import { Button } from './ui/Button';
 import { generateLoveNoteSuggestion } from '../services/geminiService';
+import { storageService } from '../services/storage';
 
 interface LoveNotesProps {
   notes: LoveNote[];
   currentUser: UserFrontend;
   partnerUser: UserFrontend;
-  onAddNote: (note: LoveNote) => void;
-  onDeleteNote: (id: string) => void;
+  onAddNote: (note: LoveNote) => Promise<void>;
+  onDeleteNote: (id: string) => Promise<void>;
 }
 
 const NOTE_COLORS = [
@@ -32,9 +33,11 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
   const [isCreating, setIsCreating] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleGenerate = async () => {
@@ -47,33 +50,60 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMediaUrl(reader.result as string);
-        setMediaType(file.type.startsWith('video') ? 'video' : 'image');
-      };
-      reader.readAsDataURL(file);
+      setMediaFile(file);
+      setMediaPreviewUrl(URL.createObjectURL(file));
     }
   };
 
-  const handleSubmit = () => {
-    if (!newNoteText.trim() && !mediaUrl) return;
-    
-    const newNote: LoveNote = {
-      id: Date.now().toString(),
-      coupleId: '', // Backend handles
-      content: newNoteText,
-      authorId: currentUser.id,
-      createdAt: new Date().toISOString(),
-      color: NOTE_COLORS[selectedColorIdx].id,
-      mediaUrl: mediaUrl || undefined,
-      mediaType: mediaUrl ? mediaType : undefined,
+  useEffect(() => {
+    return () => {
+      if (mediaPreviewUrl) {
+        URL.revokeObjectURL(mediaPreviewUrl);
+      }
     };
-    
-    onAddNote(newNote);
-    setNewNoteText('');
-    setMediaUrl(null);
-    setIsCreating(false);
+  }, [mediaPreviewUrl]);
+
+  const clearMedia = () => {
+    if (mediaPreviewUrl) {
+      URL.revokeObjectURL(mediaPreviewUrl);
+    }
+    setMediaPreviewUrl(null);
+    setMediaFile(null);
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setSubmitError(null);
+    if (!newNoteText.trim() && !mediaFile) return;
+
+    setIsSubmitting(true);
+    let uploadedUrl: string | undefined;
+    try {
+      if (mediaFile) {
+        uploadedUrl = await storageService.uploadFile(mediaFile);
+      }
+
+      const newNote: LoveNote = {
+        id: Date.now().toString(),
+        coupleId: '', // Backend handles
+        content: newNoteText,
+        authorId: currentUser.id,
+        createdAt: new Date().toISOString(),
+        color: NOTE_COLORS[selectedColorIdx].id,
+        mediaUrl: uploadedUrl,
+        mediaType: uploadedUrl ? 'image' : undefined,
+      };
+
+      await onAddNote(newNote);
+      setNewNoteText('');
+      clearMedia();
+      setIsCreating(false);
+    } catch (e) {
+      console.error('Failed to submit note', e);
+      setSubmitError('发布失败，请检查网络或稍后再试');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -110,19 +140,15 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
               data-testid="note-content-input"
             />
 
-            {mediaUrl && (
+            {mediaPreviewUrl && (
               <div className="relative mb-4 rounded-[1.5rem] overflow-hidden max-h-48 w-full shadow-inner bg-gray-50">
                 <button 
-                  onClick={() => setMediaUrl(null)}
+                  onClick={clearMedia}
                   className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 z-10 backdrop-blur-sm"
                 >
                   <X size={16} />
                 </button>
-                {mediaType === 'video' ? (
-                  <video src={mediaUrl} controls className="w-full h-full object-cover" />
-                ) : (
-                  <img src={mediaUrl} alt="Upload" className="w-full h-full object-cover" />
-                )}
+                <img src={mediaPreviewUrl} alt="Upload" className="w-full h-full object-cover" />
               </div>
             )}
             
@@ -147,7 +173,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
                   type="file" 
                   ref={fileInputRef} 
                   className="hidden" 
-                  accept="image/*,video/*"
+                  accept="image/*"
                   onChange={handleFileChange}
                 />
               </div>
@@ -161,9 +187,18 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
                 >
                   {isGenerating ? <Sparkles className="animate-spin" size={20} /> : <Sparkles size={20} />}
                 </Button>
-                <Button size="md" className="rounded-full px-8 font-black" onClick={handleSubmit} data-testid="note-submit">发布</Button>
+                <Button
+                  size="md"
+                  className="rounded-full px-8 font-black"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  data-testid="note-submit"
+                >
+                  {isSubmitting ? '发布中...' : '发布'}
+                </Button>
               </div>
             </div>
+            {submitError && <div className="text-sm text-red-500 font-bold mt-3">{submitError}</div>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -206,7 +241,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
               </div>
               {note.authorId === currentUser.id && (
                 <button 
-                  onClick={() => onDeleteNote(note.id)}
+                  onClick={() => void onDeleteNote(note.id)}
                   className="text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-white/50 rounded-full"
                   data-testid="note-delete"
                 >

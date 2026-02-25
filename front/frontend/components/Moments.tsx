@@ -1,58 +1,88 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Moment } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MapPin, Plus, Image as ImageIcon, X, Trash2, Maximize2 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { storageService } from '../services/storage';
 
 interface MomentsProps {
   moments: Moment[];
-  onAddMoment: (moment: Moment) => void;
-  onDeleteMoment: (id: string) => void;
+  onAddMoment: (moment: Moment) => Promise<void>;
+  onDeleteMoment: (id: string) => Promise<void>;
 }
 
 export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDeleteMoment }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [tags, setTags] = useState('');
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const defaultImageUrl = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setImageFile(file);
+      setImagePreviewUrl(URL.createObjectURL(file));
     }
   };
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    };
+  }, [imagePreviewUrl]);
+
+  const clearImage = () => {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl(null);
+    setImageFile(null);
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setSubmitError(null);
     if (!title.trim() || !description.trim()) return;
 
-    const newMoment: Moment = {
-      id: Date.now().toString(),
-      title,
-      description,
-      date,
-      imageUrl: imageUrl || defaultImageUrl,
-      tags: tags.split(' ').filter(t => t.trim() !== '').map(t => t.replace('#', '')),
-    };
+    setIsSubmitting(true);
+    try {
+      const uploadedUrl = imageFile ? await storageService.uploadFile(imageFile) : null;
 
-    onAddMoment(newMoment);
-    
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setTags('');
-    setImageUrl(null);
-    setIsCreating(false);
+      const newMoment: Moment = {
+        id: Date.now().toString(),
+        coupleId: '', // Backend handles
+        title,
+        description,
+        date,
+        imageUrl: uploadedUrl ?? defaultImageUrl,
+        tags: tags
+          .split(' ')
+          .filter((tag) => tag.trim() !== '')
+          .map((tag) => tag.replace('#', '')),
+        createdAt: new Date().toISOString(),
+      };
+
+      await onAddMoment(newMoment);
+
+      // Reset form
+      setTitle('');
+      setDescription('');
+      setTags('');
+      clearImage();
+      setIsCreating(false);
+    } catch (e) {
+      console.error('Failed to submit moment', e);
+      setSubmitError('发布失败，请检查网络或稍后再试');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -108,11 +138,11 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
                 />
               </div>
 
-              {imageUrl ? (
+              {imagePreviewUrl ? (
                 <div className="relative rounded-xl overflow-hidden h-40 w-full bg-gray-100">
-                  <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={imagePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
                   <button 
-                    onClick={() => setImageUrl(null)}
+                    onClick={clearImage}
                     className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
                   >
                     <X size={16} />
@@ -137,9 +167,10 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
                 onChange={handleFileChange}
               />
 
-              <Button className="w-full mt-2" onClick={handleSubmit} data-testid="moment-submit">
-                记录美好时刻
+              <Button className="w-full mt-2" onClick={handleSubmit} disabled={isSubmitting} data-testid="moment-submit">
+                {isSubmitting ? '发布中...' : '记录美好时刻'}
               </Button>
+              {submitError && <div className="text-sm text-red-500 font-bold">{submitError}</div>}
             </div>
           </motion.div>
         )}
@@ -187,7 +218,7 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
                   variant="outline" 
                   className="w-full border-red-500 text-red-500 hover:bg-red-500/10"
                   onClick={() => {
-                    onDeleteMoment(viewingMoment.id);
+                    void onDeleteMoment(viewingMoment.id);
                     setViewingMoment(null);
                   }}
                   data-testid="moment-delete"

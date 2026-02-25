@@ -58,6 +58,34 @@ const mapUserToFrontend = (user: User): UserFrontend => ({
   avatar: user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`, // Fallback or map
 });
 
+const mapCoupleToFrontend = (couple: any): CoupleData => {
+  const users = Array.isArray(couple?.users)
+    ? (couple.users as User[]).map((user) => mapUserToFrontend(user))
+    : [];
+
+  return {
+    ...couple,
+    users,
+    notes: [],
+    quests: [],
+    moments: [],
+  } as CoupleData;
+};
+
+const mapNoteFromApi = (note: any): LoveNote => {
+  return {
+    id: note.id,
+    coupleId: note.coupleId ?? '',
+    authorId: note.authorId,
+    content: note.content,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+    color: note.color ?? undefined,
+    mediaUrl: note.media?.url ?? undefined,
+    mediaType: note.media?.type ?? undefined,
+  };
+};
+
 const normalizeQuestStatus = (status?: string) => {
   if (!status) return status;
   return status.toUpperCase();
@@ -207,8 +235,7 @@ export const storageService = {
       body: JSON.stringify({}), 
     });
     saveCoupleId(couple.id);
-    // Fetch full data to get users array etc.
-    return storageService.getCoupleData(couple.id) as Promise<CoupleData>;
+    return mapCoupleToFrontend(couple);
   },
 
   joinCouple: async (pairCode: string): Promise<CoupleData> => {
@@ -217,40 +244,14 @@ export const storageService = {
       body: JSON.stringify({ pairCode }), // Changed from coupleId to pairCode based on DB schema
     });
     saveCoupleId(couple.id);
-    return storageService.getCoupleData(couple.id) as Promise<CoupleData>;
+    return mapCoupleToFrontend(couple);
   },
 
   getCoupleData: async (coupleId: string): Promise<CoupleData | null> => {
     try {
       const couple = await apiRequest(`/couples/${coupleId}`);
-      
-      // We need to fetch the users associated with this couple.
-      // The DB schema has creatorId and partnerId.
-      const users: UserFrontend[] = [];
-      
-      if (couple.creatorId) {
-        try {
-          const creator = await apiRequest(`/users/${couple.creatorId}`);
-          users.push(mapUserToFrontend(creator));
-        } catch (e) { console.warn("Failed to fetch creator", e); }
-      }
-      
-      if (couple.partnerId) {
-        try {
-          const partner = await apiRequest(`/users/${couple.partnerId}`);
-          users.push(mapUserToFrontend(partner));
-        } catch (e) { console.warn("Failed to fetch partner", e); }
-      }
-
-      const result = {
-        ...couple,
-        users,
-        notes: [], // Loaded separately
-        quests: [], // Loaded separately
-        moments: [] // Loaded separately
-      };
       saveCoupleId(couple.id);
-      return result;
+      return mapCoupleToFrontend(couple);
     } catch (error) {
       console.error("Failed to load couple data", error);
       return null;
@@ -271,7 +272,7 @@ export const storageService = {
     return { ...updated, users: [] }; // Simplified return, caller usually refreshes or merges
   },
 
-  findCoupleByUserId: async (userId: string): Promise<CoupleData | null> => {
+  findCoupleByUserId: async (userId: string, me?: User): Promise<CoupleData | null> => {
     try {
       const savedCoupleId = localStorage.getItem(COUPLE_ID_KEY);
       if (savedCoupleId) {
@@ -282,7 +283,7 @@ export const storageService = {
         localStorage.removeItem(COUPLE_ID_KEY);
       }
 
-      const me = await apiRequest('/users/me');
+      const currentMe = me ?? (await apiRequest('/users/me'));
       // Assuming /users/me returns the user object which might have a coupleId relation 
       // OR we need to query couples where creatorId or partnerId is me.
       // Since the DB schema doesn't show coupleId on User, we might need a specific endpoint 
@@ -292,12 +293,14 @@ export const storageService = {
       // However, typically 'me' endpoint returns relation. 
       // If not, we might need to search. 
       // For this implementation, let's assume `me` has a `couple` object or `coupleId`.
-      if (me.coupleId) {
-        return await storageService.getCoupleData(me.coupleId);
+      const coupleId =
+        currentMe.activeCoupleId ?? currentMe.coupleId ?? currentMe.homeCoupleId ?? null;
+      if (coupleId) {
+        return await storageService.getCoupleData(coupleId);
       }
       // Fallback: If the API returns the couple object directly
-      if (me.couple) {
-        return await storageService.getCoupleData(me.couple.id);
+      if ((currentMe as any).couple?.id) {
+        return await storageService.getCoupleData((currentMe as any).couple.id);
       }
       
       return null;
@@ -369,19 +372,25 @@ export const storageService = {
   // --- Notes ---
 
   getNotes: async (coupleId: string): Promise<LoveNote[]> => {
-    return apiRequest(`/couples/${coupleId}/notes`);
+    const notes = await apiRequest(`/couples/${coupleId}/notes`);
+    return Array.isArray(notes) ? notes.map((note) => mapNoteFromApi(note)) : [];
   },
 
   createNote: async (coupleId: string, note: Partial<LoveNote>): Promise<LoveNote> => {
-    return apiRequest(`/couples/${coupleId}/notes`, {
+    const created = await apiRequest(`/couples/${coupleId}/notes`, {
       method: 'POST',
       body: JSON.stringify({
         content: note.content,
         color: note.color,
-        mediaUrl: note.mediaUrl,
-        mediaType: note.mediaType
+        media: note.mediaUrl
+          ? {
+              url: note.mediaUrl,
+              type: note.mediaType ?? 'image',
+            }
+          : undefined,
       }),
     });
+    return mapNoteFromApi(created);
   },
 
   deleteNote: async (noteId: string): Promise<void> => {

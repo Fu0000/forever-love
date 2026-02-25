@@ -8,7 +8,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CreatePairRequestDto } from './dto/create-pair-request.dto';
@@ -40,6 +40,11 @@ export class PairRequestsController {
   }
 
   @Get('incoming')
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'pending|accepted|rejected|canceled|all',
+  })
   incoming(
     @CurrentUser() user: AuthenticatedUser,
     @Query('status') status?: string,
@@ -62,6 +67,11 @@ export class PairRequestsController {
   }
 
   @Get('outgoing')
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'pending|accepted|rejected|canceled|all',
+  })
   outgoing(
     @CurrentUser() user: AuthenticatedUser,
     @Query('status') status?: string,

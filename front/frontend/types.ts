@@ -2,7 +2,7 @@ export interface User {
   id: string;
   clientUserId?: string | null;
   name: string;
-  avatarUrl?: string; // Changed from avatar to avatarUrl
+  avatarUrl?: string | null; // backend returns nullable
   coupleId?: string | null;
   homeCoupleId?: string | null;
   activeCoupleId?: string | null;

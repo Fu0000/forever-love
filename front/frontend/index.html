@@ -4,79 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LoveSync - 甜蜜同步</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Nunito', 'sans-serif'],
-              cute: ['ZCOOL KuaiLe', 'cursive'],
-            },
-            colors: {
-              rose: {
-                50: '#fff1f2',
-                100: '#ffe4e6',
-                200: '#fecdd3',
-                300: '#fda4af',
-                400: '#fb7185',
-                500: '#f43f5e',
-                600: '#e11d48',
-                700: '#be123c',
-                800: '#9f1239',
-                900: '#881337',
-              },
-              candy: {
-                pink: '#FFDEE9',
-                blue: '#B5FFFC',
-                yellow: '#FFF9C4',
-                purple: '#E1BEE7'
-              }
-            },
-            animation: {
-              'float': 'float 3s ease-in-out infinite',
-              'heart-beat': 'heart-beat 1.5s ease-in-out infinite',
-              'wobble': 'wobble 0.5s ease-in-out infinite',
-            },
-            keyframes: {
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
-              'heart-beat': {
-                '0%, 100%': { transform: 'scale(1)' },
-                '50%': { transform: 'scale(1.1)' },
-              },
-              wobble: {
-                '0%, 100%': { transform: 'rotate(-2deg)' },
-                '50%': { transform: 'rotate(2deg)' },
-              }
-            }
-          }
-        }
-      }
-    </script>
-        <style>
-      body {
-        background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
-      /* Custom scrollbar for content */
-      .custom-scroll::-webkit-scrollbar { width: 4px; }
-      .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-      .custom-scroll::-webkit-scrollbar-thumb { background: #fda4af; border-radius: 10px; }
-
-      .glass-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>

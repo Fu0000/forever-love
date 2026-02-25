@@ -11,7 +11,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import type { Response } from 'express';
@@ -27,6 +27,10 @@ export class QuestsController {
   constructor(private readonly questsService: QuestsService) {}
 
   @Get('couples/:coupleId/quests')
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ name: 'sort', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'completed'] })
   list(
     @Param('coupleId') coupleId: string,
     @CurrentUser() user: AuthenticatedUser,
