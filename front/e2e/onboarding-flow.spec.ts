@@ -190,3 +190,38 @@ test('pair request flow: request + accept', async ({ browser }) => {
   await contextA.close();
   await contextB.close();
 });
+
+test('pair code flow: create + join', async ({ browser }) => {
+  const contextA = await browser.newContext();
+  const pageA = await contextA.newPage();
+
+  const userAName = `自动化码A${Date.now()}`;
+
+  await pageA.goto('/');
+  await pageA.getByTestId('onboarding-start').click();
+  await pageA.getByTestId('login-name-input').fill(userAName);
+  await pageA.getByTestId('login-submit').click();
+  await expect(pageA.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+  await pageA.getByTestId('create-space').click();
+
+  const pairCode = (await pageA.getByTestId('generated-pair-code').textContent())?.trim();
+  expect(pairCode).toBeTruthy();
+
+  const contextB = await browser.newContext();
+  const pageB = await contextB.newPage();
+
+  await pageB.goto('/');
+  await pageB.getByTestId('onboarding-start').click();
+  await pageB.getByTestId('login-name-input').fill(`自动化码B${Date.now()}`);
+  await pageB.getByTestId('login-submit').click();
+  await expect(pageB.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+
+  await pageB.getByTestId('join-code-input').fill(pairCode!);
+  await pageB.getByTestId('join-space').click();
+
+  await expect(pageB.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+  await expect(pageB.getByText(userAName)).toBeVisible({ timeout: 20_000 });
+
+  await contextA.close();
+  await contextB.close();
+});

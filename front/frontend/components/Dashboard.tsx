@@ -68,7 +68,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
     try {
       const normalized = pairTargetId.trim();
       if (!/^(user_[A-Za-z0-9_-]{6,64}|usr_[a-f0-9]{20})$/.test(normalized)) {
-        setPairRequestsError('请输入对方配对ID（user_...）或用户ID（usr_...）');
+        setPairRequestsError('这里请输入对方配对ID（user_...）或用户ID（usr_...），不是6位配对码');
         return;
       }
       await storageService.createPairRequest(normalized);
@@ -228,7 +228,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
                 type="text"
                 value={pairTargetId}
                 onChange={(e) => setPairTargetId(e.target.value)}
-                placeholder="输入对方配对ID（user_xxx）"
+                placeholder="输入对方配对ID（user_... 或 usr_...）"
                 className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
                 data-testid="dashboard-pair-request-target-input"
               />

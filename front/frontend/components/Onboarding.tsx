@@ -133,7 +133,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
     try {
       const normalized = pairTargetId.trim();
       if (!/^(user_[A-Za-z0-9_-]{6,64}|usr_[a-f0-9]{20})$/.test(normalized)) {
-        setPairRequestsError('请输入对方配对ID（user_...）或用户ID（usr_...）');
+        setPairRequestsError('这里请输入对方配对ID（user_...）或用户ID（usr_...），不是6位配对码');
         return;
       }
       const result = await storageService.createPairRequest(normalized);
@@ -447,7 +447,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                     type="text"
                     value={pairTargetId}
                     onChange={(e) => setPairTargetId(e.target.value)}
-                    placeholder="输入对方配对ID（user_xxx）"
+                    placeholder="输入对方配对ID（user_... 或 usr_...）"
                     className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
                     data-testid="pair-request-target-input"
                   />
@@ -573,7 +573,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({
             >
               <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-2">配对代码</p>
               <div className="flex items-center justify-center gap-3">
-                <span className="font-mono text-4xl font-black text-gray-800 tracking-widest group-hover:text-rose-600 transition-colors">{generatedCode}</span>
+                <span
+                  className="font-mono text-4xl font-black text-gray-800 tracking-widest group-hover:text-rose-600 transition-colors"
+                  data-testid="generated-pair-code"
+                >
+                  {generatedCode}
+                </span>
                 <Copy size={20} className="text-gray-400 group-hover:text-rose-500" />
               </div>
             </motion.div>
