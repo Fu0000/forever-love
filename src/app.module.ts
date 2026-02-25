@@ -14,6 +14,7 @@ import { QuestsModule } from './modules/quests/quests.module';
 import { MomentsModule } from './modules/moments/moments.module';
 import { MediaModule } from './modules/media/media.module';
 import { PairRequestsModule } from './modules/pair-requests/pair-requests.module';
+import { AiModule } from './modules/ai/ai.module';
 import { HealthController } from './health.controller';
 import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 
@@ -32,6 +33,7 @@ import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
     MomentsModule,
     MediaModule,
     PairRequestsModule,
+    AiModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,4 +1,3 @@
-import './vertex-ai-proxy-interceptor.js';
 import './styles.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

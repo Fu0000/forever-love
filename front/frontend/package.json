@@ -15,8 +15,7 @@
     "framer-motion": "latest",
     "date-fns": "latest",
     "clsx": "latest",
-    "tailwind-merge": "latest",
-    "@google/genai": "latest"
+    "tailwind-merge": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
