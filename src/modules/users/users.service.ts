@@ -7,6 +7,37 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getMe(userId: string): Promise<{
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+    coupleId: string | null;
+  }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'User not found',
+      );
+    }
+
+    const couple = await this.prisma.couple.findFirst({
+      where: {
+        OR: [{ creatorId: userId }, { partnerId: userId }],
+      },
+      select: { id: true },
+    });
+
+    return {
+      id: user.id,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      coupleId: couple?.id ?? null,
+    };
+  }
+
   async getById(userId: string): Promise<{
     id: string;
     name: string;

@@ -122,3 +122,24 @@ test('logged-in users skip onboarding unless token invalid', async ({ page }) =>
   await page.reload();
   await expect(page.getByTestId('onboarding')).toBeVisible({ timeout: 20_000 });
 });
+
+test('reload recovers couple via /users/me', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('onboarding-start').click();
+  await page.getByTestId('login-name-input').fill(`自动化恢复${Date.now()}`);
+  await page.getByTestId('login-submit').click();
+
+  await expect(page.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('create-space').click();
+  await expect(page.getByTestId('enter-app')).toBeVisible({ timeout: 20_000 });
+  await page.getByTestId('enter-app').click();
+  await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await page.evaluate(() => {
+    localStorage.removeItem('lovesync_couple_id');
+  });
+
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+});

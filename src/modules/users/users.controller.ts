@@ -16,8 +16,9 @@ export class UsersController {
     id: string;
     name: string;
     avatarUrl: string | null;
+    coupleId: string | null;
   }> {
-    return this.usersService.getById(user.userId);
+    return this.usersService.getMe(user.userId);
   }
 
   @Get(':userId')

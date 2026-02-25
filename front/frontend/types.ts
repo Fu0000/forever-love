@@ -3,6 +3,7 @@ export interface User {
   clientUserId?: string;
   name: string;
   avatarUrl?: string; // Changed from avatar to avatarUrl
+  coupleId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
