@@ -32,6 +32,15 @@ export class PairRequestsService {
     private readonly couplesService: CouplesService,
   ) {}
 
+  private resolveTargetWhere(
+    targetClientUserId: string,
+  ): Prisma.UserWhereUniqueInput {
+    if (/^usr_[a-f0-9]{20}$/.test(targetClientUserId)) {
+      return { id: targetClientUserId };
+    }
+    return { clientUserId: targetClientUserId };
+  }
+
   private mapRequest(request: PairRequestWithUsers): {
     id: string;
     coupleId: string;
@@ -102,7 +111,7 @@ export class PairRequestsService {
   }> {
     const result = await this.prisma.$transaction(async (tx) => {
       const targetUser = await tx.user.findUnique({
-        where: { clientUserId: targetClientUserId },
+        where: this.resolveTargetWhere(targetClientUserId),
         select: { id: true },
       });
       if (!targetUser) {

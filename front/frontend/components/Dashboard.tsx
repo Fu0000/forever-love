@@ -66,7 +66,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
     setPairRequestsLoading(true);
     setPairRequestsError('');
     try {
-      await storageService.createPairRequest(pairTargetId.trim());
+      const normalized = pairTargetId.trim();
+      if (!/^(user_[A-Za-z0-9_-]{6,64}|usr_[a-f0-9]{20})$/.test(normalized)) {
+        setPairRequestsError('请输入对方配对ID（user_...）或用户ID（usr_...）');
+        return;
+      }
+      await storageService.createPairRequest(normalized);
       setPairTargetId('');
       await refreshOutgoing();
     } catch (e) {

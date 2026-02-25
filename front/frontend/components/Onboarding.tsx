@@ -131,7 +131,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({
     setPairRequestsLoading(true);
     setPairRequestsError('');
     try {
-      const result = await storageService.createPairRequest(pairTargetId.trim());
+      const normalized = pairTargetId.trim();
+      if (!/^(user_[A-Za-z0-9_-]{6,64}|usr_[a-f0-9]{20})$/.test(normalized)) {
+        setPairRequestsError('请输入对方配对ID（user_...）或用户ID（usr_...）');
+        return;
+      }
+      const result = await storageService.createPairRequest(normalized);
       onComplete(tempUser, result.couple);
     } catch (e) {
       console.error('Failed to send pair request', e);
