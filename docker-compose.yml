@@ -54,6 +54,18 @@ services:
       - '127.0.0.1:3000:3000'
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
 
+  frontend:
+    build:
+      context: ./front/frontend
+      dockerfile: Dockerfile
+    container_name: couple-frontend
+    restart: unless-stopped
+    environment:
+      # Used by frontend/services/storage.ts
+      VITE_API_BASE_URL: https://foever-love.chuhaibox.com/api/v1
+    ports:
+      - '127.0.0.1:5173:80'
+
 volumes:
   postgres_data:
   minio_data:

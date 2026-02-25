@@ -7,6 +7,7 @@ A production-oriented Node service implementing the v1 REST API for `auth / user
 - Base URL: `https://{host}:{port}/api/v1`
 - Local default: `http://localhost:3000/api/v1`
 - OpenAPI docs: `https://foever-love.chuhaibox.com/api/docs`
+  - UI (frontend): `https://foever-love.chuhaibox.com/`
 
 ## Global Conventions
 
@@ -196,3 +197,19 @@ Per-resource filters:
 - Set strong `JWT_SECRET`
 - Use domain + HTTPS reverse proxy (Nginx recommended)
 - Use managed backups for Postgres and MinIO object storage
+
+### Nginx reverse proxy (frontend + API)
+
+The recommended production routing is:
+
+- `https://foever-love.chuhaibox.com/` → frontend
+- `https://foever-love.chuhaibox.com/api/*` → backend (NestJS)
+
+This repo includes an example Nginx site config:
+
+- `deploy/nginx/foever-love.chuhaibox.com.conf`
+
+With `docker compose up --build -d`, the containers bind to:
+
+- frontend: `127.0.0.1:5173`
+- api: `127.0.0.1:3000`

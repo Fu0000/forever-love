@@ -6,3 +6,4 @@ coverage
 .DS_Store
 front/backend/.env.local
 front/test-results
+front/reports
