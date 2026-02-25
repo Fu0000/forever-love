@@ -63,6 +63,25 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface CupidConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  lastMessageAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CupidConversationDetail {
+  id: string;
+  title: string;
+  messages: Array<{
+    role: 'user' | 'model';
+    text: string;
+    timestampMs: number | null;
+  }>;
+}
+
 // The shared state of the couple
 export interface CoupleData {
   id: string;

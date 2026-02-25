@@ -31,15 +31,25 @@ const App: React.FC = () => {
 
     const init = async () => {
       setInitError(null);
-      // Check backend health first
+      const tokenExists = storageService.hasToken();
+      setHasAuth(tokenExists);
+
+      // If there's no token, show onboarding ASAP. Health check can be best-effort.
+      if (!tokenExists) {
+        storageService.checkHealth().catch((e) => {
+          console.error("Health check failed", e);
+        });
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // Check backend health (authed flows)
       const isHealthy = await storageService.checkHealth();
       if (!isHealthy) {
         console.error("Backend is unreachable");
-        // You might want to show a specific error state here
       }
-
-      const tokenExists = storageService.hasToken();
-      setHasAuth(tokenExists);
 
       if (tokenExists) {
         try {
@@ -397,7 +407,7 @@ const App: React.FC = () => {
         <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={24} />} label="首页" testId="nav-dashboard" />
         <NavButton active={activeTab === 'moments'} onClick={() => setActiveTab('moments')} icon={<ImageIcon size={24} />} label="瞬间" testId="nav-moments" />
         <div className="relative -top-10">
-          <motion.button whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }} onClick={() => setActiveTab('chat')} className={`w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all border-4 border-white ${activeTab === 'chat' ? 'bg-rose-600 text-white shadow-rose-300' : 'bg-rose-500 text-white shadow-rose-200'}`}>
+          <motion.button whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }} onClick={() => setActiveTab('chat')} data-testid="nav-chat" className={`w-16 h-16 rounded-[2rem] flex items-center justify-center shadow-2xl transition-all border-4 border-white ${activeTab === 'chat' ? 'bg-rose-600 text-white shadow-rose-300' : 'bg-rose-500 text-white shadow-rose-200'}`}>
             <MessageCircle size={32} />
             <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1 -right-1 bg-yellow-400 p-1 rounded-full border-2 border-white"><Sparkles size={10} className="text-yellow-900" /></motion.div>
           </motion.button>

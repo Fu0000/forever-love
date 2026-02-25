@@ -7,6 +7,9 @@ import {
   Moment,
   IncomingPairRequest,
   OutgoingPairRequest,
+  CupidConversationSummary,
+  CupidConversationDetail,
+  ChatMessage,
 } from '../types';
 
 const API_BASE_URL =
@@ -50,6 +53,41 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     return (json as { data: unknown }).data;
   }
   return json;
+};
+
+type ApiEnvelope<T> = {
+  data: T;
+  meta?: Record<string, unknown> & { nextCursor?: string | null };
+};
+
+const apiRequestEnvelope = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<ApiEnvelope<T>> => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    const error = new Error(
+      `API Error: ${response.status} ${response.statusText} - ${errorBody}`,
+    ) as Error & { status?: number; body?: string };
+    error.status = response.status;
+    error.body = errorBody;
+    throw error;
+  }
+
+  const json = (await response.json()) as unknown;
+  return json as ApiEnvelope<T>;
 };
 
 // Helper to map backend User to Frontend User
@@ -245,6 +283,76 @@ export const storageService = {
     });
     saveCoupleId(couple.id);
     return mapCoupleToFrontend(couple);
+  },
+
+  // --- Cupid Conversations ---
+  listCupidConversations: async (
+    limit = 20,
+    cursor?: string,
+  ): Promise<{ items: CupidConversationSummary[]; nextCursor: string | null }> => {
+    const search = new URLSearchParams();
+    search.set('limit', String(limit));
+    if (cursor) search.set('cursor', cursor);
+
+    const envelope = await apiRequestEnvelope<CupidConversationSummary[]>(
+      `/ai/cupid/conversations?${search.toString()}`,
+    );
+
+    return {
+      items: envelope.data ?? [],
+      nextCursor:
+        (envelope.meta?.nextCursor as string | null | undefined) ?? null,
+    };
+  },
+
+  getCupidConversation: async (
+    conversationId: string,
+  ): Promise<CupidConversationDetail> => {
+    return apiRequest(`/ai/cupid/conversations/${conversationId}`);
+  },
+
+  createCupidConversation: async (payload: {
+    title?: string;
+    messages: ChatMessage[];
+  }): Promise<CupidConversationSummary> => {
+    return apiRequest('/ai/cupid/conversations', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: payload.title,
+        messages: payload.messages.map((msg) => ({
+          role: msg.role,
+          text: msg.text,
+          timestampMs: msg.timestamp,
+        })),
+      }),
+    });
+  },
+
+  updateCupidConversation: async (
+    conversationId: string,
+    payload: { title?: string; messages?: ChatMessage[] },
+  ): Promise<CupidConversationSummary> => {
+    return apiRequest(`/ai/cupid/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(payload.title ? { title: payload.title } : {}),
+        ...(payload.messages
+          ? {
+              messages: payload.messages.map((msg) => ({
+                role: msg.role,
+                text: msg.text,
+                timestampMs: msg.timestamp,
+              })),
+            }
+          : {}),
+      }),
+    });
+  },
+
+  deleteCupidConversation: async (conversationId: string): Promise<void> => {
+    await apiRequest(`/ai/cupid/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
   },
 
   getCoupleData: async (coupleId: string): Promise<CoupleData | null> => {
