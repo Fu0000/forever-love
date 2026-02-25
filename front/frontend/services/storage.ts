@@ -1,4 +1,13 @@
-import { CoupleData, User, UserFrontend, LoveNote, Quest, Moment } from '../types';
+import {
+  CoupleData,
+  User,
+  UserFrontend,
+  LoveNote,
+  Quest,
+  Moment,
+  IncomingPairRequest,
+  OutgoingPairRequest,
+} from '../types';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'https://foever-love.chuhaibox.com/api/v1';
@@ -291,6 +300,63 @@ export const storageService = {
       }
       return null;
     }
+  },
+
+  // --- Pair Requests ---
+
+  listIncomingPairRequests: async (): Promise<IncomingPairRequest[]> => {
+    const requests = await apiRequest('/couples/requests/incoming?status=pending');
+    return Array.isArray(requests) ? (requests as IncomingPairRequest[]) : [];
+  },
+
+  listOutgoingPairRequests: async (): Promise<OutgoingPairRequest[]> => {
+    const requests = await apiRequest('/couples/requests/outgoing?status=pending');
+    return Array.isArray(requests) ? (requests as OutgoingPairRequest[]) : [];
+  },
+
+  createPairRequest: async (
+    targetClientUserId: string,
+  ): Promise<{ request: any; couple: CoupleData }> => {
+    const result = await apiRequest('/couples/requests', {
+      method: 'POST',
+      body: JSON.stringify({ targetClientUserId }),
+    });
+    if (result?.couple?.id) {
+      saveCoupleId(result.couple.id);
+      const coupleData = await storageService.getCoupleData(result.couple.id);
+      if (coupleData) {
+        return { request: result.request, couple: coupleData };
+      }
+    }
+    return result;
+  },
+
+  acceptPairRequest: async (
+    requestId: string,
+  ): Promise<{ request: any; couple: CoupleData }> => {
+    const result = await apiRequest(`/couples/requests/${requestId}/accept`, {
+      method: 'POST',
+    });
+    if (result?.couple?.id) {
+      saveCoupleId(result.couple.id);
+      const coupleData = await storageService.getCoupleData(result.couple.id);
+      if (coupleData) {
+        return { request: result.request, couple: coupleData };
+      }
+    }
+    return result;
+  },
+
+  rejectPairRequest: async (requestId: string): Promise<{ request: any }> => {
+    return apiRequest(`/couples/requests/${requestId}/reject`, {
+      method: 'POST',
+    });
+  },
+
+  cancelPairRequest: async (requestId: string): Promise<{ request: any }> => {
+    return apiRequest(`/couples/requests/${requestId}/cancel`, {
+      method: 'POST',
+    });
   },
 
   // --- Notes ---

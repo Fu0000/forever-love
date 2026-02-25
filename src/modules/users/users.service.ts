@@ -9,6 +9,7 @@ export class UsersService {
 
   async getMe(userId: string): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
     coupleId: string | null;
@@ -32,6 +33,7 @@ export class UsersService {
 
     return {
       id: user.id,
+      clientUserId: user.clientUserId ?? null,
       name: user.name,
       avatarUrl: user.avatarUrl,
       coupleId: couple?.id ?? null,

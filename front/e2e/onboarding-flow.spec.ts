@@ -143,3 +143,50 @@ test('reload recovers couple via /users/me', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
 });
+
+test('pair request flow: request + accept', async ({ browser }) => {
+  const contextA = await browser.newContext();
+  const pageA = await contextA.newPage();
+
+  await pageA.goto('/');
+  await pageA.getByTestId('onboarding-start').click();
+  await pageA.getByTestId('login-name-input').fill(`自动化A${Date.now()}`);
+  await pageA.getByTestId('login-submit').click();
+  await expect(pageA.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+
+  const clientIdA = await pageA.evaluate(() =>
+    localStorage.getItem('lovesync_client_user_id'),
+  );
+  expect(clientIdA).toBeTruthy();
+
+  const contextB = await browser.newContext();
+  const pageB = await contextB.newPage();
+
+  await pageB.goto('/');
+  await pageB.getByTestId('onboarding-start').click();
+  await pageB.getByTestId('login-name-input').fill(`自动化B${Date.now()}`);
+  await pageB.getByTestId('login-submit').click();
+  await expect(pageB.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
+
+  await pageB.getByTestId('pair-request-target-input').fill(clientIdA!);
+  await pageB.getByTestId('pair-request-send').click();
+  await expect(pageB.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await pageA.getByTestId('pair-requests-refresh').click();
+  await expect(pageA.getByTestId('incoming-request-item')).toBeVisible({
+    timeout: 20_000,
+  });
+  await pageA.getByTestId('incoming-request-accept').click();
+  await expect(pageA.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await pageB.reload();
+  await expect(pageB.getByTestId('dashboard')).toBeVisible({ timeout: 20_000 });
+
+  await expect(pageA.getByTestId('onboarding')).toHaveCount(0);
+  await expect(pageB.getByTestId('onboarding')).toHaveCount(0);
+  await expect(pageA.getByTestId('dashboard-pair-request-card')).toHaveCount(0);
+  await expect(pageB.getByTestId('dashboard-pair-request-card')).toHaveCount(0);
+
+  await contextA.close();
+  await contextB.close();
+});

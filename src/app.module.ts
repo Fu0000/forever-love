@@ -13,6 +13,7 @@ import { NotesModule } from './modules/notes/notes.module';
 import { QuestsModule } from './modules/quests/quests.module';
 import { MomentsModule } from './modules/moments/moments.module';
 import { MediaModule } from './modules/media/media.module';
+import { PairRequestsModule } from './modules/pair-requests/pair-requests.module';
 import { HealthController } from './health.controller';
 import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
@@ -30,6 +31,7 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     QuestsModule,
     MomentsModule,
     MediaModule,
+    PairRequestsModule,
   ],
   controllers: [HealthController],
   providers: [

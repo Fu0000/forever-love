@@ -1,6 +1,6 @@
 export interface User {
   id: string;
-  clientUserId?: string;
+  clientUserId?: string | null;
   name: string;
   avatarUrl?: string; // Changed from avatar to avatarUrl
   coupleId?: string | null;
@@ -83,4 +83,31 @@ export interface CoupleData {
 export interface AppState {
   currentUserId: string | null;
   coupleData: CoupleData | null;
+}
+
+export type PairRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELED';
+
+export interface PairRequestUserLite {
+  id: string;
+  clientUserId: string | null;
+  name: string;
+  avatarUrl: string | null;
+}
+
+export interface IncomingPairRequest {
+  id: string;
+  coupleId: string;
+  status: PairRequestStatus;
+  createdAt: string;
+  respondedAt: string | null;
+  fromUser: PairRequestUserLite;
+}
+
+export interface OutgoingPairRequest {
+  id: string;
+  coupleId: string;
+  status: PairRequestStatus;
+  createdAt: string;
+  respondedAt: string | null;
+  toUser: PairRequestUserLite;
 }

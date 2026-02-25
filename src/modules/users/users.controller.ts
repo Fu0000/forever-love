@@ -14,6 +14,7 @@ export class UsersController {
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
     coupleId: string | null;

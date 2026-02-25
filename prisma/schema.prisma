@@ -12,6 +12,13 @@ enum QuestStatus {
   COMPLETED
 }
 
+enum PairRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+}
+
 model User {
   id              String   @id @db.VarChar(32)
   clientUserId    String?  @unique @db.VarChar(64)
@@ -21,6 +28,8 @@ model User {
   updatedAt       DateTime @updatedAt
   createdCouples  Couple[] @relation("CreatorCouples")
   partnerCouples  Couple[] @relation("PartnerCouples")
+  sentPairRequests     PairRequest[] @relation("PairRequestFromUser")
+  receivedPairRequests PairRequest[] @relation("PairRequestToUser")
   notes           Note[]
   createdQuests   Quest[]  @relation("QuestCreatedBy")
   completedQuests Quest[]  @relation("QuestCompletedBy")
@@ -37,11 +46,31 @@ model Couple {
   updatedAt       DateTime  @updatedAt
   creator         User      @relation("CreatorCouples", fields: [creatorId], references: [id])
   partner         User?     @relation("PartnerCouples", fields: [partnerId], references: [id])
+  pairRequests    PairRequest[]
   notes           Note[]
   quests          Quest[]
   moments         Moment[]
 
   @@index([pairCode])
+}
+
+model PairRequest {
+  id          String            @id @db.VarChar(32)
+  coupleId    String            @db.VarChar(32)
+  fromUserId  String            @db.VarChar(32)
+  toUserId    String            @db.VarChar(32)
+  status      PairRequestStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  respondedAt DateTime?
+
+  couple      Couple @relation(fields: [coupleId], references: [id])
+  fromUser    User   @relation("PairRequestFromUser", fields: [fromUserId], references: [id])
+  toUser      User   @relation("PairRequestToUser", fields: [toUserId], references: [id])
+
+  @@index([coupleId])
+  @@index([toUserId, status, createdAt, id(sort: Desc)])
+  @@index([fromUserId, status, createdAt, id(sort: Desc)])
 }
 
 model Note {

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Heart, Calendar, Flame, Trophy, Copy, Sparkles, PenTool, Camera, MessageCircle, Star, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CoupleData, UserFrontend } from '../types';
+import { CoupleData, OutgoingPairRequest, UserFrontend } from '../types';
 import { Button } from './ui/Button';
+import { storageService } from '../services/storage';
 
 interface DashboardProps {
   data: CoupleData;
@@ -14,6 +15,10 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdateAnniversary, onNavigate }) => {
   const [isEditingDate, setIsEditingDate] = useState(false);
+  const [pairTargetId, setPairTargetId] = useState('');
+  const [outgoingRequests, setOutgoingRequests] = useState<OutgoingPairRequest[]>([]);
+  const [pairRequestsLoading, setPairRequestsLoading] = useState(false);
+  const [pairRequestsError, setPairRequestsError] = useState('');
   
   const partner = data.users.find(u => u.id !== currentUser.id);
   const daysTogether = data.anniversaryDate 
@@ -33,6 +38,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
     navigator.clipboard.writeText(text).catch((err) => {
       prompt("复制此代码:", text);
     });
+  };
+
+  const refreshOutgoing = async () => {
+    if (!storageService.hasToken()) return;
+    setPairRequestsLoading(true);
+    setPairRequestsError('');
+    try {
+      const outgoing = await storageService.listOutgoingPairRequests();
+      setOutgoingRequests(outgoing);
+    } catch (e) {
+      console.error('Failed to refresh outgoing requests', e);
+      setPairRequestsError('加载配对申请失败');
+    } finally {
+      setPairRequestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (partner) return;
+    void refreshOutgoing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partner, data.id]);
+
+  const sendPairRequest = async () => {
+    if (!pairTargetId.trim()) return;
+    setPairRequestsLoading(true);
+    setPairRequestsError('');
+    try {
+      await storageService.createPairRequest(pairTargetId.trim());
+      setPairTargetId('');
+      await refreshOutgoing();
+    } catch (e) {
+      console.error('Failed to send pair request', e);
+      setPairRequestsError('发送失败，请检查配对ID或网络');
+    } finally {
+      setPairRequestsLoading(false);
+    }
+  };
+
+  const cancelPairRequest = async (requestId: string) => {
+    setPairRequestsLoading(true);
+    setPairRequestsError('');
+    try {
+      await storageService.cancelPairRequest(requestId);
+      await refreshOutgoing();
+    } catch (e) {
+      console.error('Failed to cancel pair request', e);
+      setPairRequestsError('取消失败，请稍后重试');
+    } finally {
+      setPairRequestsLoading(false);
+    }
   };
 
   return (
@@ -100,29 +156,125 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
 
       {/* Pairing Code Card (If partner missing) */}
       {!partner && (
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-yellow-50 border-2 border-yellow-200 p-5 rounded-[2rem] flex items-center justify-between shadow-sm"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-yellow-200 p-3 rounded-2xl">
-              <Star className="text-yellow-700" fill="currentColor" size={20} />
-            </div>
-            <div>
-              <h3 className="font-black text-yellow-800 text-sm">等待另一半...</h3>
-              <p className="text-xs text-yellow-600 font-medium">配对码: <span className="font-mono font-bold bg-white px-2 py-0.5 rounded-md">{data.pairCode}</span></p>
-            </div>
-          </div>
-          <Button 
-            size="sm" 
-            variant="secondary"
-            className="rounded-full w-10 h-10 !p-0"
-            onClick={() => copyToClipboard(data.pairCode)}
+        <div className="space-y-4">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-yellow-50 border-2 border-yellow-200 p-5 rounded-[2rem] flex items-center justify-between shadow-sm"
           >
-            <Copy size={16} />
-          </Button>
-        </motion.div>
+            <div className="flex items-center gap-4">
+              <div className="bg-yellow-200 p-3 rounded-2xl">
+                <Star className="text-yellow-700" fill="currentColor" size={20} />
+              </div>
+              <div>
+                <h3 className="font-black text-yellow-800 text-sm">等待另一半...</h3>
+                <p className="text-xs text-yellow-600 font-medium">配对码: <span className="font-mono font-bold bg-white px-2 py-0.5 rounded-md">{data.pairCode}</span></p>
+              </div>
+            </div>
+            <Button 
+              size="sm" 
+              variant="secondary"
+              className="rounded-full w-10 h-10 !p-0"
+              onClick={() => copyToClipboard(data.pairCode)}
+            >
+              <Copy size={16} />
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white border border-rose-100 p-5 rounded-[2rem] shadow-sm"
+            data-testid="dashboard-pair-request-card"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-black text-gray-800 text-sm">配对申请</h3>
+              <button
+                type="button"
+                className="text-xs font-bold text-rose-500 hover:text-rose-600"
+                onClick={refreshOutgoing}
+                disabled={pairRequestsLoading}
+                data-testid="dashboard-pair-requests-refresh"
+              >
+                {pairRequestsLoading ? '刷新中...' : '刷新'}
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-[11px] text-gray-500 font-bold mb-1">我的配对ID（给对方输入）</p>
+              <div className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                <span className="font-mono text-[12px] font-black text-gray-700 truncate">
+                  {currentUser.clientUserId ?? '—'}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-lg !px-3"
+                  onClick={() => copyToClipboard(currentUser.clientUserId ?? '')}
+                  disabled={!currentUser.clientUserId}
+                >
+                  <Copy size={14} />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={pairTargetId}
+                onChange={(e) => setPairTargetId(e.target.value)}
+                placeholder="输入对方配对ID（user_xxx）"
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
+                data-testid="dashboard-pair-request-target-input"
+              />
+              <Button
+                className="px-6 rounded-xl"
+                onClick={sendPairRequest}
+                disabled={!pairTargetId.trim() || pairRequestsLoading}
+                data-testid="dashboard-pair-request-send"
+              >
+                发送
+              </Button>
+            </div>
+
+            {pairRequestsError && (
+              <p className="text-red-500 text-xs mt-2 ml-1 font-medium flex items-center">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                {pairRequestsError}
+              </p>
+            )}
+
+            {outgoingRequests.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] text-gray-500 font-bold mb-2 ml-1">我发出的申请</p>
+                <div className="space-y-2">
+                  {outgoingRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"
+                      data-testid="dashboard-outgoing-request-item"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-gray-800 truncate">{req.toUser.name}</p>
+                        <p className="text-[11px] text-gray-500 font-mono truncate">{req.toUser.clientUserId ?? ''}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="rounded-lg !px-3"
+                        onClick={() => cancelPairRequest(req.id)}
+                        disabled={pairRequestsLoading}
+                        data-testid="dashboard-outgoing-request-cancel"
+                      >
+                        取消
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
       )}
 
       {/* Romantic Space Entry */}
