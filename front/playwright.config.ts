@@ -1,11 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
+const port = process.env.E2E_PORT ?? '5173';
+const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${port}`;
 const webServer = process.env.E2E_WEB_SERVER === '1'
   ? {
-      command: 'npm run dev --prefix frontend -- --host 0.0.0.0 --port 5173',
+      command: `npm run dev --prefix frontend -- --host 0.0.0.0 --port ${port} --strictPort`,
       url: baseURL,
-      reuseExistingServer: !process.env.CI,
+      // Avoid accidentally reusing another project's dev server on the same port.
+      // Set E2E_REUSE_SERVER=1 if you explicitly want reuse.
+      reuseExistingServer: process.env.E2E_REUSE_SERVER === '1',
       timeout: 120_000,
     }
   : undefined;

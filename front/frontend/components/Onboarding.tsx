@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Heart, ArrowRight, Copy, Check, Sparkles, UserPlus, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, ArrowRight, Copy, Check, Sparkles, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/Button';
-import { CoupleData, IncomingPairRequest, OutgoingPairRequest, UserFrontend } from '../types';
+import { CoupleData, UserFrontend } from '../types';
 import { storageService } from '../services/storage';
+import { PairRequestPanel } from './PairRequestPanel';
 
 interface OnboardingProps {
   onComplete: (user: UserFrontend, data: CoupleData) => void;
@@ -33,40 +34,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [tempUser, setTempUser] = useState<UserFrontend | null>(() => initialUser);
-  const [pairTargetId, setPairTargetId] = useState('');
-  const [incomingRequests, setIncomingRequests] = useState<IncomingPairRequest[]>([]);
-  const [outgoingRequests, setOutgoingRequests] = useState<OutgoingPairRequest[]>([]);
-  const [pairRequestsLoading, setPairRequestsLoading] = useState(false);
-  const [pairRequestsError, setPairRequestsError] = useState('');
 
   const handleStart = () => {
     setStep('profile');
   };
-
-  const refreshPairRequests = async () => {
-    if (!storageService.hasToken()) return;
-    setPairRequestsLoading(true);
-    setPairRequestsError('');
-    try {
-      const [incoming, outgoing] = await Promise.all([
-        storageService.listIncomingPairRequests(),
-        storageService.listOutgoingPairRequests(),
-      ]);
-      setIncomingRequests(incoming);
-      setOutgoingRequests(outgoing);
-    } catch (e) {
-      console.error('Failed to refresh pair requests', e);
-      setPairRequestsError('加载配对申请失败');
-    } finally {
-      setPairRequestsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (step !== 'pairing') return;
-    void refreshPairRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
 
   const handleProfileSubmit = async () => {
     if (!name.trim() || !gender) return;
@@ -96,7 +67,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({
         onComplete(loggedInUser, existingCouple);
       } else {
         setStep('pairing');
-        void refreshPairRequests();
       }
     } catch (e) {
       console.error("Login failed", e);
@@ -135,69 +105,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({
       setError('加入失败，请检查代码或网络。');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const sendPairRequest = async () => {
-    if (!tempUser || !pairTargetId.trim()) return;
-    setPairRequestsLoading(true);
-    setPairRequestsError('');
-    try {
-      const normalized = pairTargetId.trim();
-      if (!/^(user_[A-Za-z0-9_-]{6,64}|usr_[a-f0-9]{20})$/.test(normalized)) {
-        setPairRequestsError('这里请输入对方配对ID（user_...）或用户ID（usr_...），不是6位配对码');
-        return;
-      }
-      const result = await storageService.createPairRequest(normalized);
-      onComplete(tempUser, result.couple);
-    } catch (e) {
-      console.error('Failed to send pair request', e);
-      setPairRequestsError('发送失败，请检查配对ID或网络');
-    } finally {
-      setPairRequestsLoading(false);
-    }
-  };
-
-  const acceptPairRequest = async (requestId: string) => {
-    if (!tempUser) return;
-    setPairRequestsLoading(true);
-    setPairRequestsError('');
-    try {
-      const result = await storageService.acceptPairRequest(requestId);
-      onComplete(tempUser, result.couple);
-    } catch (e) {
-      console.error('Failed to accept pair request', e);
-      setPairRequestsError('同意失败，请稍后重试');
-    } finally {
-      setPairRequestsLoading(false);
-    }
-  };
-
-  const rejectPairRequest = async (requestId: string) => {
-    setPairRequestsLoading(true);
-    setPairRequestsError('');
-    try {
-      await storageService.rejectPairRequest(requestId);
-      await refreshPairRequests();
-    } catch (e) {
-      console.error('Failed to reject pair request', e);
-      setPairRequestsError('拒绝失败，请稍后重试');
-    } finally {
-      setPairRequestsLoading(false);
-    }
-  };
-
-  const cancelPairRequest = async (requestId: string) => {
-    setPairRequestsLoading(true);
-    setPairRequestsError('');
-    try {
-      await storageService.cancelPairRequest(requestId);
-      await refreshPairRequests();
-    } catch (e) {
-      console.error('Failed to cancel pair request', e);
-      setPairRequestsError('取消失败，请稍后重试');
-    } finally {
-      setPairRequestsLoading(false);
     }
   };
 
@@ -445,142 +352,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                 {error && <p className="text-red-500 text-xs mt-2 ml-1 font-medium flex items-center"><span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>{error}</p>}
               </div>
 
-              <div className="bg-white p-5 rounded-[1.5rem] border border-rose-100 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">配对申请</label>
-                  <button
-                    type="button"
-                    className="text-xs font-bold text-rose-500 hover:text-rose-600"
-                    onClick={refreshPairRequests}
-                    disabled={pairRequestsLoading}
-                    data-testid="pair-requests-refresh"
-                  >
-                    {pairRequestsLoading ? '刷新中...' : '刷新'}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className="flex-1">
-                    <p className="text-[11px] text-gray-500 font-bold mb-1">我的配对ID（给对方输入）</p>
-                    <div className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                      <span
-                        className="font-mono text-[12px] font-black text-gray-700 truncate"
-                        data-testid="my-client-user-id"
-                      >
-                        {tempUser?.clientUserId ?? '—'}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="rounded-lg !px-3"
-                        onClick={() => copyToClipboard(tempUser?.clientUserId ?? '')}
-                        disabled={!tempUser?.clientUserId}
-                        data-testid="copy-my-client-user-id"
-                      >
-                        <Copy size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 min-w-0">
-                  <input
-                    type="text"
-                    value={pairTargetId}
-                    onChange={(e) => setPairTargetId(e.target.value)}
-                    placeholder="输入对方配对ID（user_... 或 usr_...）"
-                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
-                    data-testid="pair-request-target-input"
-                  />
-                  <Button
-                    className="px-6 rounded-xl shrink-0"
-                    onClick={sendPairRequest}
-                    disabled={!pairTargetId.trim() || pairRequestsLoading}
-                    data-testid="pair-request-send"
-                  >
-                    <UserPlus size={16} className="mr-1" />
-                    发送
-                  </Button>
-                </div>
-
-                {pairRequestsError && (
-                  <p className="text-red-500 text-xs mt-2 ml-1 font-medium flex items-center">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
-                    {pairRequestsError}
-                  </p>
-                )}
-
-                {incomingRequests.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-[11px] text-gray-500 font-bold mb-2 ml-1">收到的申请</p>
-                    <div className="space-y-2">
-                      {incomingRequests.map((req) => (
-                        <div
-                          key={req.id}
-                          className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2"
-                          data-testid="incoming-request-item"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-gray-800 truncate">{req.fromUser.name}</p>
-                            <p className="text-[11px] text-gray-500 font-mono truncate">{req.fromUser.clientUserId ?? ''}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              className="rounded-lg !px-3"
-                              onClick={() => acceptPairRequest(req.id)}
-                              disabled={pairRequestsLoading}
-                              data-testid="incoming-request-accept"
-                            >
-                              同意
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              className="rounded-lg !px-3"
-                              onClick={() => rejectPairRequest(req.id)}
-                              disabled={pairRequestsLoading}
-                              data-testid="incoming-request-reject"
-                            >
-                              拒绝
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {outgoingRequests.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-[11px] text-gray-500 font-bold mb-2 ml-1">我发出的申请</p>
-                    <div className="space-y-2">
-                      {outgoingRequests.map((req) => (
-                        <div
-                          key={req.id}
-                          className="flex items-center justify-between gap-3 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"
-                          data-testid="outgoing-request-item"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-gray-800 truncate">{req.toUser.name}</p>
-                            <p className="text-[11px] text-gray-500 font-mono truncate">{req.toUser.clientUserId ?? ''}</p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="rounded-lg !px-3"
-                            onClick={() => cancelPairRequest(req.id)}
-                            disabled={pairRequestsLoading}
-                            data-testid="outgoing-request-cancel"
-                          >
-                            取消
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PairRequestPanel
+                myClientUserId={tempUser?.clientUserId}
+                mode="onboarding"
+                onAccepted={(couple) => {
+                  if (!tempUser) return;
+                  onComplete(tempUser, couple as any);
+                }}
+              />
             </div>
           </motion.div>
         )}

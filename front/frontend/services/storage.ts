@@ -333,10 +333,7 @@ export const storageService = {
     });
     if (result?.couple?.id) {
       saveCoupleId(result.couple.id);
-      const coupleData = await storageService.getCoupleData(result.couple.id);
-      if (coupleData) {
-        return { request: result.request, couple: coupleData };
-      }
+      return { request: result.request, couple: mapCoupleToFrontend(result.couple) };
     }
     return result;
   },
@@ -349,10 +346,7 @@ export const storageService = {
     });
     if (result?.couple?.id) {
       saveCoupleId(result.couple.id);
-      const coupleData = await storageService.getCoupleData(result.couple.id);
-      if (coupleData) {
-        return { request: result.request, couple: coupleData };
-      }
+      return { request: result.request, couple: mapCoupleToFrontend(result.couple) };
     }
     return result;
   },

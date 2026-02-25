@@ -119,7 +119,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddNote = async (note: LoveNote) => {
+  const handleAddNote = async (note: LoveNote): Promise<void> => {
     if (!coupleData) return;
     try {
       const newNote = await storageService.createNote(coupleData.id, {
@@ -142,7 +142,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
+  const handleDeleteNote = async (id: string): Promise<void> => {
     if (!coupleData) return;
     try {
       await storageService.deleteNote(id);
@@ -155,7 +155,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddMoment = async (moment: Moment) => {
+  const handleAddMoment = async (moment: Moment): Promise<void> => {
     if (!coupleData) return;
     try {
       const newMoment = await storageService.createMoment(coupleData.id, {
@@ -178,7 +178,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteMoment = async (id: string) => {
+  const handleDeleteMoment = async (id: string): Promise<void> => {
     if (!coupleData) return;
     try {
       await storageService.deleteMoment(id);
@@ -191,7 +191,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddQuest = async (quest: Quest) => {
+  const handleAddQuest = async (quest: Quest): Promise<void> => {
     if (!coupleData) return;
     try {
       const newQuest = await storageService.createQuest(coupleData.id, {
@@ -210,7 +210,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateQuest = async (updatedQuest: Quest) => {
+  const handleUpdateQuest = async (updatedQuest: Quest): Promise<void> => {
     if (!coupleData) return;
     try {
       const savedQuest = await storageService.updateQuest(updatedQuest.id, {
@@ -230,7 +230,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteQuest = async (id: string) => {
+  const handleDeleteQuest = async (id: string): Promise<void> => {
     if (!coupleData) return;
     try {
       await storageService.deleteQuest(id);
@@ -243,7 +243,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCompleteQuest = async (id: string) => {
+  const handleCompleteQuest = async (id: string): Promise<void> => {
     if (!coupleData || !currentUser) return;
     try {
       const completedQuest = await storageService.completeQuest(id);
