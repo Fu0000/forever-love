@@ -80,12 +80,19 @@ Error:
 - `GET /users/{userId}`
 - `PATCH /users/{userId}`
 
+`GET /users/me` returns:
+
+- `homeCoupleId`: the user's personal (home) couple space (kept when joining others)
+- `activeCoupleId`: the currently active couple space for the app UI
+- `coupleId`: alias of `activeCoupleId ?? homeCoupleId` (backward compatible)
+
 ### Couples
 
 - `POST /couples`
 - `POST /couples/join`
 - `GET /couples/{coupleId}`
 - `PATCH /couples/{coupleId}`
+- `POST /couples/{coupleId}/dissolve` (remove partner, both users return to their home space)
 
 ### Notes
 
@@ -115,6 +122,7 @@ Error:
 
 - Generic: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `INTERNAL_ERROR`
 - Business: `PAIR_CODE_NOT_FOUND`, `COUPLE_FULL`, `ALREADY_JOINED`, `INVALID_CURSOR`, `INVALID_CONTENT_TYPE`
+  - Pairing: `COUPLE_CREATOR_ALREADY_PAIRED`
 
 ## Local Development
 
