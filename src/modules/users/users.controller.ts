@@ -17,6 +17,8 @@ export class UsersController {
     clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
+    homeCoupleId: string | null;
+    activeCoupleId: string | null;
     coupleId: string | null;
   }> {
     return this.usersService.getMe(user.userId);

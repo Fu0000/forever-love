@@ -91,4 +91,21 @@ export class CouplesController {
   }> {
     return this.couplesService.update(coupleId, user.userId, dto);
   }
+
+  @Post(':coupleId/dissolve')
+  @HttpCode(HttpStatus.OK)
+  dissolve(
+    @Param('coupleId') coupleId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{
+    id: string;
+    pairCode: string;
+    creatorId: string;
+    partnerId: string | null;
+    anniversaryDate: string | null;
+    intimacyScore: number;
+    users: Array<{ id: string; name: string; avatarUrl: string | null }>;
+  }> {
+    return this.couplesService.dissolve(coupleId, user.userId);
+  }
 }

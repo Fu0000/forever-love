@@ -24,8 +24,12 @@ model User {
   clientUserId    String?  @unique @db.VarChar(64)
   name            String   @db.VarChar(64)
   avatarUrl       String?  @db.Text
+  homeCoupleId    String?  @db.VarChar(32)
+  activeCoupleId  String?  @db.VarChar(32)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  homeCouple      Couple?  @relation("UserHomeCouple", fields: [homeCoupleId], references: [id])
+  activeCouple    Couple?  @relation("UserActiveCouple", fields: [activeCoupleId], references: [id])
   createdCouples  Couple[] @relation("CreatorCouples")
   partnerCouples  Couple[] @relation("PartnerCouples")
   sentPairRequests     PairRequest[] @relation("PairRequestFromUser")
@@ -33,6 +37,9 @@ model User {
   notes           Note[]
   createdQuests   Quest[]  @relation("QuestCreatedBy")
   completedQuests Quest[]  @relation("QuestCompletedBy")
+
+  @@index([homeCoupleId])
+  @@index([activeCoupleId])
 }
 
 model Couple {
@@ -46,6 +53,8 @@ model Couple {
   updatedAt       DateTime  @updatedAt
   creator         User      @relation("CreatorCouples", fields: [creatorId], references: [id])
   partner         User?     @relation("PartnerCouples", fields: [partnerId], references: [id])
+  homeUsers       User[]    @relation("UserHomeCouple")
+  activeUsers     User[]    @relation("UserActiveCouple")
   pairRequests    PairRequest[]
   notes           Note[]
   quests          Quest[]

@@ -4,6 +4,8 @@ export interface User {
   name: string;
   avatarUrl?: string; // Changed from avatar to avatarUrl
   coupleId?: string | null;
+  homeCoupleId?: string | null;
+  activeCoupleId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

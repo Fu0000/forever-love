@@ -129,30 +129,103 @@ export class PairRequestsService {
         );
       }
 
-      const actorCouple = await tx.couple.findFirst({
-        where: { OR: [{ creatorId: actorUserId }, { partnerId: actorUserId }] },
-        select: { id: true, creatorId: true, partnerId: true },
+      const actor = await tx.user.findUnique({
+        where: { id: actorUserId },
+        select: { id: true, homeCoupleId: true, activeCoupleId: true },
       });
-      if (actorCouple?.partnerId) {
+      if (!actor) {
         throw new AppException(
-          HttpStatus.CONFLICT,
-          'ALREADY_PAIRED',
-          'User already paired',
+          HttpStatus.NOT_FOUND,
+          'NOT_FOUND',
+          'User not found',
         );
       }
 
-      const targetCouple = await tx.couple.findFirst({
-        where: {
-          OR: [{ creatorId: targetUser.id }, { partnerId: targetUser.id }],
-        },
-        select: { id: true },
+      const target = await tx.user.findUnique({
+        where: { id: targetUser.id },
+        select: { id: true, homeCoupleId: true, activeCoupleId: true },
       });
-      if (targetCouple) {
+      if (!target) {
         throw new AppException(
-          HttpStatus.CONFLICT,
-          'TARGET_ALREADY_PAIRED',
-          'Target user already belongs to a couple',
+          HttpStatus.NOT_FOUND,
+          'TARGET_NOT_FOUND',
+          'Target user not found',
         );
+      }
+
+      const resolveActiveCoupleId = async (user: {
+        id: string;
+        homeCoupleId: string | null;
+        activeCoupleId: string | null;
+      }): Promise<{ homeCoupleId: string | null; activeCoupleId: string | null }> => {
+        let homeCoupleId = user.homeCoupleId ?? null;
+        let activeCoupleId = user.activeCoupleId ?? null;
+        let shouldUpdate = false;
+
+        if (!homeCoupleId) {
+          const creatorCouple = await tx.couple.findUnique({
+            where: { creatorId: user.id },
+            select: { id: true },
+          });
+          if (creatorCouple) {
+            homeCoupleId = creatorCouple.id;
+            shouldUpdate = true;
+          }
+        }
+
+        if (!activeCoupleId) {
+          const partnerCouple = await tx.couple.findFirst({
+            where: { partnerId: user.id },
+            select: { id: true },
+          });
+          if (partnerCouple) {
+            activeCoupleId = partnerCouple.id;
+            shouldUpdate = true;
+          } else if (homeCoupleId) {
+            activeCoupleId = homeCoupleId;
+            shouldUpdate = true;
+          }
+        }
+
+        if (shouldUpdate) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: { homeCoupleId, activeCoupleId },
+          });
+        }
+
+        return { homeCoupleId, activeCoupleId };
+      };
+
+      const actorState = await resolveActiveCoupleId(actor);
+      const targetState = await resolveActiveCoupleId(target);
+
+      if (actorState.activeCoupleId) {
+        const active = await tx.couple.findUnique({
+          where: { id: actorState.activeCoupleId },
+          select: { partnerId: true },
+        });
+        if (active?.partnerId) {
+          throw new AppException(
+            HttpStatus.CONFLICT,
+            'ALREADY_PAIRED',
+            'User already paired',
+          );
+        }
+      }
+
+      if (targetState.activeCoupleId) {
+        const active = await tx.couple.findUnique({
+          where: { id: targetState.activeCoupleId },
+          select: { partnerId: true },
+        });
+        if (active?.partnerId) {
+          throw new AppException(
+            HttpStatus.CONFLICT,
+            'TARGET_ALREADY_PAIRED',
+            'Target user already paired',
+          );
+        }
       }
 
       const existingPending = await tx.pairRequest.findFirst({
@@ -175,13 +248,58 @@ export class PairRequestsService {
         );
       }
 
-      const coupleId =
-        actorCouple?.id ?? (await this.createCoupleForUser(tx, actorUserId)).id;
+      let homeCoupleId = actorState.homeCoupleId;
+      if (!homeCoupleId) {
+        const existingHome = await tx.couple.findUnique({
+          where: { creatorId: actorUserId },
+          select: { id: true },
+        });
+        if (existingHome) {
+          homeCoupleId = existingHome.id;
+          await tx.user.update({
+            where: { id: actorUserId },
+            data: {
+              homeCoupleId,
+              activeCoupleId: actorState.activeCoupleId ?? homeCoupleId,
+            },
+          });
+        } else {
+          const created = await this.createCoupleForUser(tx, actorUserId);
+          homeCoupleId = created.id;
+          await tx.user.update({
+            where: { id: actorUserId },
+            data: {
+              homeCoupleId,
+              activeCoupleId: actorState.activeCoupleId ?? homeCoupleId,
+            },
+          });
+        }
+      }
+
+      if (!homeCoupleId) {
+        throw new AppException(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'HOME_COUPLE_MISSING',
+          'Failed to ensure home couple',
+        );
+      }
+
+      const actorHome = await tx.couple.findUnique({
+        where: { id: homeCoupleId },
+        select: { partnerId: true },
+      });
+      if (actorHome?.partnerId) {
+        throw new AppException(
+          HttpStatus.CONFLICT,
+          'ALREADY_PAIRED',
+          'User already paired',
+        );
+      }
 
       const request = await tx.pairRequest.create({
         data: {
           id: generateEntityId('req_'),
-          coupleId,
+          coupleId: homeCoupleId,
           fromUserId: actorUserId,
           toUserId: targetUser.id,
           status: PairRequestStatus.PENDING,
@@ -194,7 +312,7 @@ export class PairRequestsService {
 
       return {
         request,
-        coupleId,
+        coupleId: homeCoupleId,
       };
     });
 
@@ -341,15 +459,15 @@ export class PairRequestsService {
         );
       }
 
-      const actorCouple = await tx.couple.findFirst({
-        where: { OR: [{ creatorId: actorUserId }, { partnerId: actorUserId }] },
-        select: { id: true },
+      const actor = await tx.user.findUnique({
+        where: { id: actorUserId },
+        select: { homeCoupleId: true, activeCoupleId: true },
       });
-      if (actorCouple) {
+      if (!actor) {
         throw new AppException(
-          HttpStatus.CONFLICT,
-          'ALREADY_PAIRED',
-          'User already belongs to a couple',
+          HttpStatus.NOT_FOUND,
+          'NOT_FOUND',
+          'User not found',
         );
       }
 
@@ -370,6 +488,20 @@ export class PairRequestsService {
           'REQUEST_INVALID',
           'Pair request couple mismatch',
         );
+      }
+
+      if (actor.activeCoupleId) {
+        const active = await tx.couple.findUnique({
+          where: { id: actor.activeCoupleId },
+          select: { partnerId: true },
+        });
+        if (active?.partnerId) {
+          throw new AppException(
+            HttpStatus.CONFLICT,
+            'ALREADY_PAIRED',
+            'User already paired',
+          );
+        }
       }
 
       const updateResult = await tx.couple.updateMany({
@@ -395,6 +527,23 @@ export class PairRequestsService {
         where: { id: requestId },
         data: { status: PairRequestStatus.ACCEPTED, respondedAt: now },
         include: { fromUser: true, toUser: true },
+      });
+
+      let homeCoupleId = actor.homeCoupleId;
+      if (!homeCoupleId) {
+        const existingHome = await tx.couple.findUnique({
+          where: { creatorId: actorUserId },
+          select: { id: true },
+        });
+        homeCoupleId = existingHome?.id ?? (await this.createCoupleForUser(tx, actorUserId)).id;
+      }
+
+      await tx.user.update({
+        where: { id: actorUserId },
+        data: {
+          homeCoupleId,
+          activeCoupleId: accepted.coupleId,
+        },
       });
 
       await tx.pairRequest.updateMany({

@@ -2,16 +2,22 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppException } from '../../common/errors/app.exception';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CouplesService } from '../couples/couples.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly couplesService: CouplesService,
+  ) {}
 
   async getMe(userId: string): Promise<{
     id: string;
     clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
+    homeCoupleId: string | null;
+    activeCoupleId: string | null;
     coupleId: string | null;
   }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -24,19 +30,16 @@ export class UsersService {
       );
     }
 
-    const couple = await this.prisma.couple.findFirst({
-      where: {
-        OR: [{ creatorId: userId }, { partnerId: userId }],
-      },
-      select: { id: true },
-    });
+    const state = await this.couplesService.ensureUserCouplePointers(userId);
 
     return {
       id: user.id,
       clientUserId: user.clientUserId ?? null,
       name: user.name,
       avatarUrl: user.avatarUrl,
-      coupleId: couple?.id ?? null,
+      homeCoupleId: state.homeCoupleId,
+      activeCoupleId: state.activeCoupleId,
+      coupleId: state.coupleId,
     };
   }
 
