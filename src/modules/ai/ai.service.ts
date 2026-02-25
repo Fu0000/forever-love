@@ -12,7 +12,7 @@ const ensureTrailingSlash = (value: string): string =>
 @Injectable()
 export class AiService {
   private getBaseUrl(): string {
-    return process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1';
+    return process.env.OPENAI_BASE_URL ?? 'https://api.123nhh.me/v1';
   }
 
   private getApiKey(): string {
@@ -133,4 +133,3 @@ export class AiService {
     }
   }
 }
-
