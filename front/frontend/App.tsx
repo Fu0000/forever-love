@@ -280,12 +280,15 @@ const App: React.FC = () => {
   if (!hasAuth) {
     return <Onboarding onComplete={handleLogin} />;
   }
-  if (!currentUser || !coupleData) {
+  if (!currentUser) {
     return (
       <div className="min-h-screen bg-rose-50 flex items-center justify-center text-rose-500 font-black font-cute">
         正在加载你们的空间...
       </div>
     );
+  }
+  if (!coupleData) {
+    return <Onboarding onComplete={handleLogin} mode="pairingOnly" initialUser={currentUser} />;
   }
 
   const partnerUser = coupleData.users.find(u => u.id !== currentUser.id) || {

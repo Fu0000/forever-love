@@ -7,17 +7,28 @@ import { storageService } from '../services/storage';
 
 interface OnboardingProps {
   onComplete: (user: UserFrontend, data: CoupleData) => void;
+  mode?: 'full' | 'pairingOnly';
+  initialStep?: 'welcome' | 'profile' | 'pairing';
+  initialUser?: UserFrontend | null;
 }
 
-export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [step, setStep] = useState<'welcome' | 'profile' | 'pairing'>('welcome');
+export const Onboarding: React.FC<OnboardingProps> = ({
+  onComplete,
+  mode = 'full',
+  initialStep,
+  initialUser = null,
+}) => {
+  const resolvedInitialStep: 'welcome' | 'profile' | 'pairing' =
+    mode === 'pairingOnly' ? 'pairing' : (initialStep ?? 'welcome');
+
+  const [step, setStep] = useState<'welcome' | 'profile' | 'pairing'>(() => resolvedInitialStep);
   const [name, setName] = useState('');
   const [pairingCode, setPairingCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [createdCouple, setCreatedCouple] = useState<CoupleData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [tempUser, setTempUser] = useState<UserFrontend | null>(null);
+  const [tempUser, setTempUser] = useState<UserFrontend | null>(() => initialUser);
 
   const handleStart = () => {
     setStep('profile');
