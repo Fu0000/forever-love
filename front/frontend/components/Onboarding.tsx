@@ -23,6 +23,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
   const [step, setStep] = useState<'welcome' | 'profile' | 'pairing'>(() => resolvedInitialStep);
   const [name, setName] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | null>(() => {
+    const stored = localStorage.getItem('lovesync_gender');
+    return stored === 'male' || stored === 'female' ? stored : null;
+  });
   const [pairingCode, setPairingCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [createdCouple, setCreatedCouple] = useState<CoupleData | null>(null);
@@ -65,12 +69,20 @@ export const Onboarding: React.FC<OnboardingProps> = ({
   }, [step]);
 
   const handleProfileSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !gender) return;
     setIsLoading(true);
     
+    localStorage.setItem('lovesync_gender', gender);
+
+    const avatarSeed = name.trim();
+    const avatarBase =
+      gender === 'male'
+        ? 'https://api.dicebear.com/9.x/micah/svg'
+        : 'https://api.dicebear.com/9.x/lorelei/svg';
+
     const user: Partial<UserFrontend> = {
       name: name,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      avatar: `${avatarBase}?seed=${encodeURIComponent(avatarSeed)}`,
     };
 
     try {
@@ -317,11 +329,40 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   data-testid="login-name-input"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGender('male')}
+                  className={[
+                    'px-4 py-3 rounded-2xl border-2 text-sm font-black transition-all',
+                    gender === 'male'
+                      ? 'border-rose-400 bg-rose-50 text-rose-600 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-rose-200',
+                  ].join(' ')}
+                  data-testid="gender-male"
+                >
+                  我是男生
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('female')}
+                  className={[
+                    'px-4 py-3 rounded-2xl border-2 text-sm font-black transition-all',
+                    gender === 'female'
+                      ? 'border-rose-400 bg-rose-50 text-rose-600 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-rose-200',
+                  ].join(' ')}
+                  data-testid="gender-female"
+                >
+                  我是女生
+                </button>
+              </div>
               
               <Button 
                 className="w-full py-4 text-lg rounded-full shadow-lg shadow-rose-200" 
                 onClick={handleProfileSubmit}
-                disabled={!name.trim() || isLoading}
+                disabled={!name.trim() || !gender || isLoading}
                 data-testid="login-submit"
               >
                 {isLoading ? '登录中...' : '下一步'}
@@ -383,17 +424,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({
 
               <div className="bg-gray-50 p-5 rounded-[1.5rem] border border-gray-100">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">加入现有空间</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 min-w-0">
                   <input
                     type="text"
                     value={pairingCode}
                     onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
                     placeholder="输入代码"
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center tracking-widest font-mono uppercase font-bold text-lg bg-white"
+                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center tracking-widest font-mono uppercase font-bold text-lg bg-white"
                     data-testid="join-code-input"
                   />
                   <Button 
-                    className="px-6 rounded-xl" 
+                    className="px-6 rounded-xl shrink-0" 
                     onClick={joinSpace}
                     disabled={!pairingCode.trim() || isLoading}
                     data-testid="join-space"
@@ -442,17 +483,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 min-w-0">
                   <input
                     type="text"
                     value={pairTargetId}
                     onChange={(e) => setPairTargetId(e.target.value)}
                     placeholder="输入对方配对ID（user_... 或 usr_...）"
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
+                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-400 outline-none text-center font-mono text-sm bg-white"
                     data-testid="pair-request-target-input"
                   />
                   <Button
-                    className="px-6 rounded-xl"
+                    className="px-6 rounded-xl shrink-0"
                     onClick={sendPairRequest}
                     disabled={!pairTargetId.trim() || pairRequestsLoading}
                     data-testid="pair-request-send"

@@ -42,6 +42,7 @@ export class UsersService {
 
   async getById(userId: string): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
   }> {
@@ -57,6 +58,7 @@ export class UsersService {
 
     return {
       id: user.id,
+      clientUserId: user.clientUserId ?? null,
       name: user.name,
       avatarUrl: user.avatarUrl,
     };
@@ -68,6 +70,7 @@ export class UsersService {
     dto: UpdateUserDto,
   ): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
   }> {
@@ -100,6 +103,7 @@ export class UsersService {
 
     return {
       id: updated.id,
+      clientUserId: updated.clientUserId ?? null,
       name: updated.name,
       avatarUrl: updated.avatarUrl,
     };

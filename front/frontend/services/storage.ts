@@ -464,7 +464,7 @@ export const storageService = {
 
   // --- Media Upload ---
   uploadFile: async (file: File): Promise<string> => {
-    const { url, key } = await apiRequest('/media/presign-upload', {
+    const { putUrl, publicUrl } = await apiRequest('/media/presign-upload', {
       method: 'POST',
       body: JSON.stringify({
         filename: file.name,
@@ -472,7 +472,7 @@ export const storageService = {
       }),
     });
 
-    await fetch(url, {
+    await fetch(putUrl, {
       method: 'PUT',
       body: file,
       headers: {
@@ -480,6 +480,6 @@ export const storageService = {
       },
     });
 
-    return url.split('?')[0];
+    return publicUrl;
   }
 };

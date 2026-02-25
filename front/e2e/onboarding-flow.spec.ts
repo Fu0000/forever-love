@@ -17,6 +17,7 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
   await page.getByTestId('onboarding-start').click();
 
   await page.getByTestId('login-name-input').fill(`自动化${Date.now()}`);
+  await page.getByTestId('gender-female').click();
 
   const loginResponsePromise = page.waitForResponse((res) =>
     res.url().includes('/auth/login'),
@@ -104,6 +105,7 @@ test('logged-in users skip onboarding unless token invalid', async ({ page }) =>
 
   await page.getByTestId('onboarding-start').click();
   await page.getByTestId('login-name-input').fill(`自动化持久${Date.now()}`);
+  await page.getByTestId('gender-female').click();
   await page.getByTestId('login-submit').click();
 
   await expect(page.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
@@ -128,6 +130,7 @@ test('reload recovers couple via /users/me', async ({ page }) => {
 
   await page.getByTestId('onboarding-start').click();
   await page.getByTestId('login-name-input').fill(`自动化恢复${Date.now()}`);
+  await page.getByTestId('gender-female').click();
   await page.getByTestId('login-submit').click();
 
   await expect(page.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
@@ -151,6 +154,7 @@ test('pair request flow: request + accept', async ({ browser }) => {
   await pageA.goto('/');
   await pageA.getByTestId('onboarding-start').click();
   await pageA.getByTestId('login-name-input').fill(`自动化A${Date.now()}`);
+  await pageA.getByTestId('gender-female').click();
   await pageA.getByTestId('login-submit').click();
   await expect(pageA.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
 
@@ -165,6 +169,7 @@ test('pair request flow: request + accept', async ({ browser }) => {
   await pageB.goto('/');
   await pageB.getByTestId('onboarding-start').click();
   await pageB.getByTestId('login-name-input').fill(`自动化B${Date.now()}`);
+  await pageB.getByTestId('gender-female').click();
   await pageB.getByTestId('login-submit').click();
   await expect(pageB.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
 
@@ -200,6 +205,7 @@ test('pair code flow: create + join', async ({ browser }) => {
   await pageA.goto('/');
   await pageA.getByTestId('onboarding-start').click();
   await pageA.getByTestId('login-name-input').fill(userAName);
+  await pageA.getByTestId('gender-female').click();
   await pageA.getByTestId('login-submit').click();
   await expect(pageA.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
   await pageA.getByTestId('create-space').click();
@@ -213,6 +219,7 @@ test('pair code flow: create + join', async ({ browser }) => {
   await pageB.goto('/');
   await pageB.getByTestId('onboarding-start').click();
   await pageB.getByTestId('login-name-input').fill(`自动化码B${Date.now()}`);
+  await pageB.getByTestId('gender-female').click();
   await pageB.getByTestId('login-submit').click();
   await expect(pageB.getByTestId('create-space')).toBeVisible({ timeout: 20_000 });
 

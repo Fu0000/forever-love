@@ -25,6 +25,7 @@ export class UsersController {
   @Get(':userId')
   getById(@Param('userId') userId: string): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
   }> {
@@ -38,6 +39,7 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ): Promise<{
     id: string;
+    clientUserId: string | null;
     name: string;
     avatarUrl: string | null;
   }> {

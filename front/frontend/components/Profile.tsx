@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { UserFrontend, CoupleData } from '../types';
 import { X, Camera, Sparkles, LogOut, Edit2, Check, Copy } from 'lucide-react';
@@ -16,23 +16,53 @@ interface ProfileProps {
 export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onUpdateUser, onLogout }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState(user.name);
+  const [avatarUpdating, setAvatarUpdating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const gender = useMemo(() => {
+    const stored = localStorage.getItem('lovesync_gender');
+    return stored === 'male' || stored === 'female' ? stored : 'female';
+  }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onUpdateUser({ ...user, avatar: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      setAvatarUpdating(true);
+      try {
+        const url = await storageService.uploadFile(file);
+        onUpdateUser({ ...user, avatar: url });
+      } catch (err) {
+        console.error('Failed to upload avatar', err);
+        alert('头像上传失败，请稍后重试');
+      } finally {
+        setAvatarUpdating(false);
+      }
     }
   };
 
-  const generateAvatar = () => {
-    const seed = Math.random().toString(36).substring(7);
-    const newAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
-    onUpdateUser({ ...user, avatar: newAvatar });
+  const generateAvatar = async () => {
+    const seed = Math.random().toString(36).slice(2, 12);
+    const sprite =
+      gender === 'male'
+        ? 'https://api.dicebear.com/9.x/micah/svg'
+        : 'https://api.dicebear.com/9.x/lorelei/svg';
+    const sourceUrl = `${sprite}?seed=${encodeURIComponent(seed)}`;
+
+    setAvatarUpdating(true);
+    try {
+      const res = await fetch(sourceUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `avatar-${seed}.svg`, {
+        type: blob.type || 'image/svg+xml',
+      });
+      const url = await storageService.uploadFile(file);
+      onUpdateUser({ ...user, avatar: url });
+    } catch (err) {
+      console.error('Failed to generate avatar', err);
+      alert('生成头像失败，请稍后重试');
+    } finally {
+      setAvatarUpdating(false);
+    }
   };
 
   const saveName = () => {
@@ -96,8 +126,9 @@ export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onU
             size="sm" 
             onClick={generateAvatar}
             className="mb-6 rounded-full px-4 text-xs"
+            disabled={avatarUpdating}
           >
-            <Sparkles size={14} className="mr-1" /> AI 生成头像
+            <Sparkles size={14} className="mr-1" /> {avatarUpdating ? '生成中...' : 'AI 生成头像'}
           </Button>
 
           <div className="flex items-center gap-2 mb-1">

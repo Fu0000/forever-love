@@ -98,10 +98,14 @@ const App: React.FC = () => {
     if (!coupleData || !currentUser) return;
     try {
       const savedUser = await storageService.updateUser(currentUser.id, updatedUser);
-      setCurrentUser(savedUser);
+      const mergedUser = {
+        ...savedUser,
+        clientUserId: savedUser.clientUserId ?? currentUser.clientUserId,
+      };
+      setCurrentUser(mergedUser);
       setCoupleData(prev => prev ? ({
         ...prev,
-        users: prev.users.map(u => u.id === savedUser.id ? savedUser : u)
+        users: prev.users.map(u => u.id === savedUser.id ? mergedUser : u)
       }) : null);
     } catch (e) {
       console.error("Failed to update user", e);
