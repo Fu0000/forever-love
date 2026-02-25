@@ -464,22 +464,34 @@ export const storageService = {
 
   // --- Media Upload ---
   uploadFile: async (file: File): Promise<string> => {
-    const { putUrl, publicUrl } = await apiRequest('/media/presign-upload', {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      throw new Error('Not authenticated');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/media/upload`, {
       method: 'POST',
-      body: JSON.stringify({
-        filename: file.name,
-        contentType: file.type,
-      }),
-    });
-
-    await fetch(putUrl, {
-      method: 'PUT',
-      body: file,
       headers: {
-        'Content-Type': file.type,
+        'Authorization': `Bearer ${token}`,
       },
+      body: formData,
     });
 
-    return publicUrl;
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(
+        `API Error: ${response.status} ${response.statusText} - ${errorBody}`,
+      );
+    }
+
+    const json = await response.json();
+    const data = json?.data ?? json;
+    if (!data?.publicUrl) {
+      throw new Error('Upload succeeded but publicUrl missing');
+    }
+    return data.publicUrl as string;
   }
 };
