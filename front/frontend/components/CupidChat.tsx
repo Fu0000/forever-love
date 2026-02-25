@@ -73,7 +73,7 @@ export const CupidChat: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(circle_at_1px_1px,rgba(244,63,94,0.10)_1px,transparent_0)] [background-size:18px_18px] bg-fixed">
         {messages.map((msg) => (
           <motion.div
             key={msg.id}

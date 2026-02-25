@@ -247,7 +247,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({
       >
         <Star size={48} fill="currentColor" />
       </motion.div>
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-30 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(244,63,94,0.10)_1px,transparent_0)] [background-size:18px_18px] opacity-60 pointer-events-none"></div>
 
       <AnimatePresence mode="wait">
         {step === 'welcome' && (

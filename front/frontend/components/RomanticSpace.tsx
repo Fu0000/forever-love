@@ -297,7 +297,7 @@ const GardenScene: React.FC = () => {
       className="flex-1 bg-emerald-100 relative overflow-hidden cursor-crosshair"
       onClick={plantFlower}
     >
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/grass.png')] opacity-20" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(16,185,129,0.12)_1px,transparent_0)] [background-size:22px_22px] opacity-60" />
       <AnimatePresence>
         {flowers.map(f => (
           <motion.div

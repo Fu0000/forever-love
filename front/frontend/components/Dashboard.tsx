@@ -289,7 +289,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
         onClick={() => onNavigate('romantic')}
         className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[2rem] p-6 text-white shadow-xl flex items-center justify-between relative overflow-hidden group"
       >
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.22)_1px,transparent_0)] [background-size:22px_22px] opacity-60"></div>
         <div className="flex items-center gap-4 relative z-10">
           <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
             <Zap className="text-yellow-300 animate-pulse" fill="currentColor" />
