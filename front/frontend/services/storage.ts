@@ -128,6 +128,13 @@ export const storageService = {
     localStorage.removeItem(COUPLE_ID_KEY);
   },
 
+  clearLocalIdentity: () => {
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(COUPLE_ID_KEY);
+    localStorage.removeItem(CLIENT_ID_KEY);
+  },
+
   hasToken: (): boolean => Boolean(localStorage.getItem(TOKEN_KEY)),
 
   getCurrentUser: async (): Promise<UserFrontend> => {

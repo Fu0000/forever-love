@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { UserFrontend, CoupleData } from '../types';
-import { X, Camera, Sparkles, LogOut, Edit2, Check } from 'lucide-react';
+import { X, Camera, Sparkles, LogOut, Edit2, Check, Copy } from 'lucide-react';
 import { Button } from './ui/Button';
+import { storageService } from '../services/storage';
 
 interface ProfileProps {
   user: UserFrontend;
@@ -39,6 +40,19 @@ export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onU
       onUpdateUser({ ...user, name });
       setIsEditingName(false);
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {
+      prompt("复制:", text);
+    });
+  };
+
+  const switchAccount = () => {
+    const ok = window.confirm('将清除本地登录信息与配对ID，用于创建新用户。确定继续吗？');
+    if (!ok) return;
+    storageService.clearLocalIdentity();
+    onLogout();
   };
 
   return (
@@ -106,7 +120,22 @@ export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onU
               </div>
             )}
           </div>
-          <p className="text-gray-400 text-sm">ID: {user.id.slice(0, 8)}...</p>
+          <p className="text-gray-400 text-sm">用户ID: {user.id.slice(0, 8)}...</p>
+          <div className="mt-3 w-full max-w-sm bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] text-gray-500 font-bold mb-1">配对ID（给对方用来发起配对申请）</p>
+              <p className="font-mono text-xs font-black text-gray-700 truncate">{user.clientUserId ?? '—'}</p>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="rounded-xl !px-3"
+              onClick={() => copyToClipboard(user.clientUserId ?? '')}
+              disabled={!user.clientUserId}
+            >
+              <Copy size={14} />
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -130,6 +159,14 @@ export const Profile: React.FC<ProfileProps> = ({ user, coupleData, onClose, onU
             onClick={onLogout}
           >
             <LogOut size={18} className="mr-2" /> 退出登录
+          </Button>
+
+          <Button
+            variant="outline"
+            className="w-full py-4 rounded-2xl text-gray-700 border-gray-200 hover:bg-gray-50"
+            onClick={switchAccount}
+          >
+            清除本地信息并切换账号
           </Button>
         </div>
       </div>
