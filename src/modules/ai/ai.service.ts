@@ -50,7 +50,7 @@ export class AiService {
         body: JSON.stringify({
           model,
           temperature: 0.7,
-          max_tokens: 250,
+          max_completion_tokens: 250,
           messages: [
             { role: 'system', content: system },
             { role: 'user', content: user },
