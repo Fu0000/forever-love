@@ -44,7 +44,7 @@ export class IntimacyService {
   private async ensureLegacyImport(coupleId: string, tx?: TxClient): Promise<void> {
     const db = tx ?? this.prisma;
     const existing = await db.intimacyEvent.findFirst({
-      where: { coupleId, type: IntimacyEventType.LEGACY_IMPORT },
+      where: { coupleId },
       select: { id: true },
     });
     if (existing) return;
