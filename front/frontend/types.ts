@@ -30,6 +30,7 @@ export interface LoveNote {
 export interface Moment {
   id: string;
   coupleId: string;
+  createdBy: string;
   title: string;
   description?: string;
   date: string; // ISO Date string (YYYY-MM-DD)

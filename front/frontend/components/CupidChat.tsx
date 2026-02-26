@@ -199,14 +199,14 @@ export const CupidChat: React.FC = () => {
           </div>
         </div>
         <div>
-          <h3 className="font-bold text-gray-800 text-lg">丘比特 AI</h3>
+          <h3 className="font-bold text-gray-800 text-lg">恋爱ing</h3>
           <p className="text-xs text-rose-500 font-medium">恋爱导师</p>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-col items-end gap-2">
           <button
             onClick={startNewConversation}
-            className="h-9 px-3 rounded-xl bg-white/70 hover:bg-white text-rose-600 border border-rose-100 shadow-sm text-xs font-black flex items-center gap-1.5 transition"
+            className="h-9 w-[92px] px-3 rounded-xl bg-white/70 hover:bg-white text-rose-600 border border-rose-100 shadow-sm text-xs font-black flex items-center justify-center gap-1.5 transition"
             type="button"
             data-testid="cupid-new"
             title="新对话"
@@ -217,7 +217,7 @@ export const CupidChat: React.FC = () => {
           <button
             onClick={saveConversation}
             disabled={isSaving || messages.length < 2}
-            className="h-9 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-sm text-xs font-black flex items-center gap-1.5 transition"
+            className="h-9 w-[92px] px-3 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-sm text-xs font-black flex items-center justify-center gap-1.5 transition"
             type="button"
             data-testid="cupid-save"
             title="保存当前对话"
@@ -229,7 +229,7 @@ export const CupidChat: React.FC = () => {
 
           <button
             onClick={openHistory}
-            className="h-9 px-3 rounded-xl bg-white/70 hover:bg-white text-gray-700 border border-rose-100 shadow-sm text-xs font-black flex items-center gap-1.5 transition"
+            className="h-9 w-[92px] px-3 rounded-xl bg-white/70 hover:bg-white text-gray-700 border border-rose-100 shadow-sm text-xs font-black flex items-center justify-center gap-1.5 transition"
             type="button"
             data-testid="cupid-history"
             title="历史记录"

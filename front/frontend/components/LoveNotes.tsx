@@ -5,6 +5,7 @@ import { LoveNote, UserFrontend } from '../types';
 import { Button } from './ui/Button';
 import { generateLoveNoteSuggestion } from '../services/geminiService';
 import { storageService } from '../services/storage';
+import { UserBadge } from './ui/UserBadge';
 
 interface LoveNotesProps {
   notes: LoveNote[];
@@ -132,6 +133,16 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
             exit={{ height: 0, opacity: 0, scale: 0.9 }}
             className="bg-white rounded-[2.5rem] p-6 shadow-xl border-2 border-rose-100 mb-8 overflow-hidden"
           >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                将以你发布
+              </div>
+              <UserBadge
+                name={currentUser.name}
+                avatar={currentUser.avatar}
+                label="我"
+              />
+            </div>
             <textarea
               value={newNoteText}
               onChange={(e) => setNewNoteText(e.target.value)}
@@ -220,6 +231,17 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
             className={`p-5 rounded-[2rem] shadow-sm border-2 relative group break-inside-avoid ${resolveNoteColor(note.color)}`}
             data-testid="note-item"
           >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <UserBadge
+                name={note.authorId === currentUser.id ? currentUser.name : partnerUser.name}
+                avatar={note.authorId === currentUser.id ? currentUser.avatar : partnerUser.avatar}
+                label={note.authorId === currentUser.id ? '我' : undefined}
+              />
+              <div className="flex items-center gap-1 opacity-60 text-[10px] font-bold shrink-0 mt-1">
+                <Calendar size={10} />
+                {new Date(note.createdAt).toLocaleDateString()}
+              </div>
+            </div>
             <div className="space-y-3">
               {note.mediaUrl && (
                 <div className="rounded-[1.2rem] overflow-hidden w-full h-40 bg-black/5 shadow-inner">
@@ -235,10 +257,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
               </p>
             </div>
             <div className="flex justify-between items-end mt-4">
-              <div className="flex items-center gap-1 opacity-50 text-[10px] font-bold">
-                <Calendar size={10} />
-                {new Date(note.createdAt).toLocaleDateString()}
-              </div>
+              <div />
               {note.authorId === currentUser.id && (
                 <button 
                   onClick={() => void onDeleteNote(note.id)}

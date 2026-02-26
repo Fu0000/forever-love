@@ -37,6 +37,7 @@ model User {
   notes           Note[]
   createdQuests   Quest[]  @relation("QuestCreatedBy")
   completedQuests Quest[]  @relation("QuestCompletedBy")
+  moments         Moment[]
   cupidConversations CupidConversation[]
 
   @@index([homeCoupleId])
@@ -123,6 +124,7 @@ model Quest {
 model Moment {
   id          String   @id @db.VarChar(32)
   coupleId    String   @db.VarChar(32)
+  createdBy   String   @db.VarChar(32)
   title       String   @db.VarChar(120)
   description String?  @db.Text
   date        DateTime @db.Date
@@ -131,8 +133,10 @@ model Moment {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   couple      Couple   @relation(fields: [coupleId], references: [id])
+  creator     User     @relation(fields: [createdBy], references: [id])
 
   @@index([coupleId, createdAt, id(sort: Desc)])
+  @@index([createdBy])
   @@index([tags], type: Gin)
 }
 

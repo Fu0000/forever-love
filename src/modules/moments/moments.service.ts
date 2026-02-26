@@ -25,8 +25,10 @@ export class MomentsService {
     imageUrl: string;
     tags: string[];
     createdAt: Date;
+    createdBy: string;
   }): {
     id: string;
+    createdBy: string;
     title: string;
     description: string | null;
     date: string;
@@ -36,6 +38,7 @@ export class MomentsService {
   } {
     return {
       id: moment.id,
+      createdBy: moment.createdBy,
       title: moment.title,
       description: moment.description,
       date: toDateOnlyString(moment.date) ?? '',
@@ -52,6 +55,7 @@ export class MomentsService {
   ): Promise<{
     data: Array<{
       id: string;
+      createdBy: string;
       title: string;
       description: string | null;
       date: string;
@@ -124,6 +128,7 @@ export class MomentsService {
     dto: CreateMomentDto,
   ): Promise<{
     id: string;
+    createdBy: string;
     title: string;
     description: string | null;
     date: string;
@@ -137,6 +142,7 @@ export class MomentsService {
       data: {
         id: generateEntityId('mmt_'),
         coupleId,
+        createdBy: userId,
         title: dto.title,
         description: dto.description,
         date: new Date(dto.date),

@@ -4,10 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Quest, UserFrontend } from '../types';
 import { clsx } from 'clsx';
 import { Button } from './ui/Button';
+import { UserBadge } from './ui/UserBadge';
 
 interface QuestsProps {
   quests: Quest[];
   currentUser: UserFrontend;
+  partnerUser: UserFrontend;
   onCompleteQuest: (id: string) => void;
   onAddQuest: (quest: Quest) => void;
   onDeleteQuest: (id: string) => void;
@@ -24,7 +26,15 @@ const QuestIcon = ({ type }: { type: Quest['type'] }) => {
   }
 };
 
-export const Quests: React.FC<QuestsProps> = ({ quests, currentUser, onCompleteQuest, onAddQuest, onDeleteQuest, onUpdateQuest }) => {
+export const Quests: React.FC<QuestsProps> = ({
+  quests,
+  currentUser,
+  partnerUser,
+  onCompleteQuest,
+  onAddQuest,
+  onDeleteQuest,
+  onUpdateQuest,
+}) => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [viewingQuest, setViewingQuest] = useState<Quest | null>(null);
@@ -42,6 +52,13 @@ export const Quests: React.FC<QuestsProps> = ({ quests, currentUser, onCompleteQ
     setType('quality_time');
     setEditingQuest(null);
     setIsCreating(false);
+  };
+
+  const resolveUser = (userId?: string | null): UserFrontend | null => {
+    if (!userId) return null;
+    if (userId === currentUser.id) return currentUser;
+    if (userId === partnerUser.id) return partnerUser;
+    return null;
   };
 
   const handleEdit = (quest: Quest) => {
@@ -111,6 +128,13 @@ export const Quests: React.FC<QuestsProps> = ({ quests, currentUser, onCompleteQ
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-black font-cute">{editingQuest ? '修改任务' : '发布新任务'}</h3>
                 <button onClick={resetForm} data-testid="quest-form-close"><X size={24} className="text-gray-400" /></button>
+              </div>
+
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                  将以你发布
+                </div>
+                <UserBadge name={currentUser.name} avatar={currentUser.avatar} label="我" />
               </div>
               
               <div className="space-y-4">
@@ -199,6 +223,50 @@ export const Quests: React.FC<QuestsProps> = ({ quests, currentUser, onCompleteQ
               </div>
 
               <p className="text-gray-600 mb-6 leading-relaxed">{viewingQuest.description}</p>
+
+              <div className="mb-6 space-y-3">
+                {(() => {
+                  const author = resolveUser(viewingQuest.createdBy);
+                  return (
+                    <div>
+                      <div className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                        发布者
+                      </div>
+                      {author ? (
+                        <UserBadge
+                          name={author.name}
+                          avatar={author.avatar}
+                          label={author.id === currentUser.id ? '我' : undefined}
+                          size="md"
+                        />
+                      ) : (
+                        <div className="text-sm font-black text-gray-500">未知</div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {viewingQuest.status === 'COMPLETED' && (
+                  <div>
+                    <div className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                      完成者
+                    </div>
+                    {(() => {
+                      const completer = resolveUser(viewingQuest.completedBy);
+                      return completer ? (
+                        <UserBadge
+                          name={completer.name}
+                          avatar={completer.avatar}
+                          label={completer.id === currentUser.id ? '我' : undefined}
+                          size="md"
+                        />
+                      ) : (
+                        <div className="text-sm font-black text-gray-500">未知</div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
               
               <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
                 <div className="flex items-center gap-1">
@@ -251,10 +319,14 @@ export const Quests: React.FC<QuestsProps> = ({ quests, currentUser, onCompleteQ
                 {quest.title}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                <UserBadge
+                  name={quest.createdBy === currentUser.id ? currentUser.name : partnerUser.name}
+                  avatar={quest.createdBy === currentUser.id ? currentUser.avatar : partnerUser.avatar}
+                  label={quest.createdBy === currentUser.id ? '我' : undefined}
+                />
+                <span className="text-[10px] text-gray-400 flex items-center gap-0.5 shrink-0">
                   <Calendar size={10} /> {new Date(quest.createdAt).toLocaleDateString()}
                 </span>
-                {quest.createdBy === currentUser.id && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 rounded">我发布的</span>}
               </div>
             </div>
 

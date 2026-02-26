@@ -36,6 +36,7 @@ export class MomentsController {
   ): Promise<{
     data: Array<{
       id: string;
+      createdBy: string;
       title: string;
       description: string | null;
       date: string;
@@ -56,6 +57,7 @@ export class MomentsController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<{
     id: string;
+    createdBy: string;
     title: string;
     description: string | null;
     date: string;

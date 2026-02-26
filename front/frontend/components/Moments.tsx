@@ -1,17 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Moment } from '../types';
+import { Moment, UserFrontend } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Plus, Image as ImageIcon, X, Trash2, Maximize2 } from 'lucide-react';
+import {
+  Calendar,
+  Plus,
+  Image as ImageIcon,
+  X,
+  Trash2,
+  Maximize2,
+  ChevronLeft,
+} from 'lucide-react';
 import { Button } from './ui/Button';
 import { storageService } from '../services/storage';
+import { UserBadge } from './ui/UserBadge';
 
 interface MomentsProps {
   moments: Moment[];
+  currentUser: UserFrontend;
+  partnerUser: UserFrontend;
   onAddMoment: (moment: Moment) => Promise<void>;
   onDeleteMoment: (id: string) => Promise<void>;
 }
 
-export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDeleteMoment }) => {
+export const Moments: React.FC<MomentsProps> = ({
+  moments,
+  currentUser,
+  partnerUser,
+  onAddMoment,
+  onDeleteMoment,
+}) => {
   const [isCreating, setIsCreating] = useState(false);
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +75,7 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
       const newMoment: Moment = {
         id: Date.now().toString(),
         coupleId: '', // Backend handles
+        createdBy: currentUser.id,
         title,
         description,
         date,
@@ -103,6 +121,12 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
             className="bg-white rounded-2xl p-4 shadow-md border border-rose-100 mb-8 overflow-hidden"
           >
             <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                  将以你发布
+                </div>
+                <UserBadge name={currentUser.name} avatar={currentUser.avatar} label="我" />
+              </div>
               <input
                 type="text"
                 value={title}
@@ -184,15 +208,24 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/90 flex flex-col overflow-y-auto"
           >
-            <button 
-              onClick={() => setViewingMoment(null)}
-              className="absolute top-4 right-4 text-white/70 hover:text-white z-10 p-2"
-              data-testid="moment-view-close"
-            >
-              <X size={32} />
-            </button>
+            <div className="sticky top-0 z-20 pt-safe">
+              <div className="flex items-center justify-between px-4 py-3 bg-black/50 backdrop-blur border-b border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setViewingMoment(null)}
+                  className="text-white/80 hover:text-white flex items-center gap-1 font-black"
+                  data-testid="moment-view-close"
+                >
+                  <ChevronLeft size={22} /> 返回
+                </button>
+                <div className="text-white/80 text-xs font-black tracking-widest uppercase">
+                  旅程详情
+                </div>
+                <div className="w-[62px]" />
+              </div>
+            </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <div className="flex-1 flex flex-col items-center justify-center p-6 pb-safe">
               {viewingMoment.imageUrl && (
                 <img 
                   src={viewingMoment.imageUrl} 
@@ -204,6 +237,23 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
                 <div className="flex items-center gap-2 text-rose-400 font-bold mb-2 uppercase tracking-wide text-sm">
                   <Calendar size={14} />
                   {new Date(viewingMoment.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+                <div className="mb-3">
+                  <UserBadge
+                    name={
+                      viewingMoment.createdBy === currentUser.id
+                        ? currentUser.name
+                        : partnerUser.name
+                    }
+                    avatar={
+                      viewingMoment.createdBy === currentUser.id
+                        ? currentUser.avatar
+                        : partnerUser.avatar
+                    }
+                    label={viewingMoment.createdBy === currentUser.id ? '我' : undefined}
+                    size="md"
+                    variant="light"
+                  />
                 </div>
                 <h2 className="text-3xl font-black mb-4 font-cute">{viewingMoment.title}</h2>
                 <p className="text-gray-300 leading-relaxed text-lg mb-6">{viewingMoment.description}</p>
@@ -258,6 +308,21 @@ export const Moments: React.FC<MomentsProps> = ({ moments, onAddMoment, onDelete
                 </div>
               )}
               <div className="p-4">
+                <div className="mb-3">
+                  <UserBadge
+                    name={
+                      moment.createdBy === currentUser.id
+                        ? currentUser.name
+                        : partnerUser.name
+                    }
+                    avatar={
+                      moment.createdBy === currentUser.id
+                        ? currentUser.avatar
+                        : partnerUser.avatar
+                    }
+                    label={moment.createdBy === currentUser.id ? '我' : undefined}
+                  />
+                </div>
                 <div className="flex items-center gap-2 text-xs text-rose-500 font-bold mb-1 uppercase tracking-wide">
                   <Calendar size={12} />
                   {new Date(moment.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}

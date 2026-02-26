@@ -344,6 +344,7 @@ const App: React.FC = () => {
         return <Quests 
           quests={coupleData.quests} 
           currentUser={currentUser}
+          partnerUser={partnerUser}
           onCompleteQuest={handleCompleteQuest} 
           onAddQuest={handleAddQuest}
           onDeleteQuest={handleDeleteQuest}
@@ -352,7 +353,15 @@ const App: React.FC = () => {
       case 'chat': 
         return <CupidChat />;
       case 'moments': 
-        return <Moments moments={coupleData.moments} onAddMoment={handleAddMoment} onDeleteMoment={handleDeleteMoment} />;
+        return (
+          <Moments
+            moments={coupleData.moments}
+            currentUser={currentUser}
+            partnerUser={partnerUser}
+            onAddMoment={handleAddMoment}
+            onDeleteMoment={handleDeleteMoment}
+          />
+        );
       default: 
         return <Dashboard data={coupleData} currentUser={currentUser} onUpdateAnniversary={handleUpdateAnniversary} onNavigate={setActiveTab} />;
     }

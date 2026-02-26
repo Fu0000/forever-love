@@ -1,10 +1,41 @@
 import React, { useState } from 'react';
 import { differenceInDays } from 'date-fns';
-import { Heart, Calendar, Flame, Trophy, Copy, Sparkles, PenTool, Camera, MessageCircle, Star, Zap } from 'lucide-react';
+import {
+  Heart,
+  Calendar,
+  Flame,
+  Trophy,
+  Copy,
+  Sparkles,
+  PenTool,
+  Camera,
+  MessageCircle,
+  Star,
+  Zap,
+  X,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CoupleData, UserFrontend } from '../types';
 import { Button } from './ui/Button';
 import { PairRequestPanel } from './PairRequestPanel';
+
+const INTIMACY_LEVELS: Array<{ level: number; title: string; hint: string }> = [
+  { level: 1, title: '初遇', hint: '认识彼此，一切刚刚开始' },
+  { level: 2, title: '心动', hint: '开始在意对方的小情绪' },
+  { level: 3, title: '热恋', hint: '甜度超标，想每天见面' },
+  { level: 4, title: '默契', hint: '不说也懂，你的习惯我都记得' },
+  { level: 5, title: '依恋', hint: '在一起时安心，不在也想念' },
+  { level: 6, title: '同频', hint: '价值观更靠近，沟通更顺畅' },
+  { level: 7, title: '坚定', hint: '遇到问题也愿意一起解决' },
+  { level: 8, title: '相守', hint: '把对方当作长期的“我们”' },
+  { level: 9, title: '灵魂伴侣', hint: '被理解、被接住，也更懂得爱' },
+  { level: 10, title: '命中注定', hint: '坚定选择彼此，彼此成就' },
+];
+
+const getIntimacyTitle = (level: number): string => {
+  const found = INTIMACY_LEVELS.find((item) => item.level === level);
+  return found?.title ?? '永恒恋人';
+};
 
 interface DashboardProps {
   data: CoupleData;
@@ -15,6 +46,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdateAnniversary, onNavigate }) => {
   const [isEditingDate, setIsEditingDate] = useState(false);
+  const [levelOpen, setLevelOpen] = useState(false);
   
   const partner = data.users.find(u => u.id !== currentUser.id);
   const daysTogether = data.anniversaryDate 
@@ -23,6 +55,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
   
   const level = Math.floor(data.intimacyScore / 100) + 1;
   const progress = data.intimacyScore % 100;
+  const levelTitle = getIntimacyTitle(level);
+  const nextTarget = level * 100;
+  const remaining = Math.max(0, nextTarget - data.intimacyScore);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value).getTime();
@@ -86,10 +121,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
           <div className="flex justify-between items-end mb-3">
             <div>
               <p className="text-rose-100 text-[10px] uppercase tracking-widest font-black mb-1">亲密度等级</p>
-              <p className="text-3xl font-black flex items-center gap-2 font-cute">Lv.{level}</p>
+              <p className="text-3xl font-black flex items-center gap-2 font-cute">
+                Lv.{level} <span className="text-base text-rose-100 font-black">{levelTitle}</span>
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-[11px] font-black text-white/80 hover:text-white underline underline-offset-4"
+                onClick={() => setLevelOpen(true)}
+              >
+                查看等级体系
+              </button>
             </div>
             <div className="text-right">
               <p className="text-rose-100 text-[10px] font-bold">{data.intimacyScore} / {(level) * 100} 积分</p>
+              <p className="text-rose-100 text-[10px] font-bold mt-1">
+                距离 Lv.{level + 1} 还差 {remaining} 分
+              </p>
               <Flame className="w-8 h-8 text-orange-300 inline-block animate-bounce" fill="currentColor" />
             </div>
           </div>
@@ -98,6 +145,81 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
           </div>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {levelOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+            onClick={() => setLevelOpen(false)}
+          >
+            <div
+              className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-black font-cute text-gray-800">亲密度等级体系</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    每满 100 分提升 1 级（不封顶）
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => setLevelOpen(false)}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-100">
+                <div className="text-xs font-black text-rose-600 tracking-widest uppercase">
+                  当前
+                </div>
+                <div className="mt-1 text-lg font-black text-gray-800 font-cute">
+                  Lv.{level} · {levelTitle}
+                </div>
+                <div className="mt-1 text-xs text-gray-600 font-bold">
+                  距离 Lv.{level + 1} 还差 {remaining} 分
+                </div>
+              </div>
+
+              <div className="max-h-[55vh] overflow-y-auto custom-scroll pr-1 space-y-2">
+                {INTIMACY_LEVELS.map((row) => (
+                  <div
+                    key={row.level}
+                    className="border border-gray-100 rounded-2xl p-4"
+                  >
+                    <div className="flex items-baseline justify-between gap-4">
+                      <div className="font-black text-gray-800">
+                        Lv.{row.level} · {row.title}
+                      </div>
+                      <div className="text-[11px] font-black text-gray-400">
+                        {((row.level - 1) * 100).toString()}–{(row.level * 100 - 1).toString()}
+                      </div>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-600 font-bold">
+                      {row.hint}
+                    </div>
+                  </div>
+                ))}
+                <div className="border border-gray-100 rounded-2xl p-4">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <div className="font-black text-gray-800">Lv.11+ · 永恒恋人</div>
+                    <div className="text-[11px] font-black text-gray-400">1000+</div>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-600 font-bold">
+                    更懂得经营与陪伴，让爱长久发光
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pairing Code Card (If partner missing) */}
       {!partner && (
