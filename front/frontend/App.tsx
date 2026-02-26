@@ -406,7 +406,14 @@ const App: React.FC = () => {
 
       <main className="p-6 flex-1 overflow-y-auto no-scrollbar relative z-10 custom-scroll">
         <AnimatePresence mode="wait">
-          <motion.div key={activeTab} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+          {/* Avoid transforms here so in-page modals using `position: fixed` can truly overlay header/nav. */}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+          >
             {renderContent()}
           </motion.div>
         </AnimatePresence>
