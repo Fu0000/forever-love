@@ -106,9 +106,12 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({
     if (isPolishing) return;
     if (!newNoteText.trim()) return;
     setIsPolishing(true);
-    const polished = await polishText(newNoteText, 'note');
-    setNewNoteText(polished);
-    setIsPolishing(false);
+    try {
+      const polished = await polishText(newNoteText, 'note');
+      setNewNoteText(polished);
+    } finally {
+      setIsPolishing(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

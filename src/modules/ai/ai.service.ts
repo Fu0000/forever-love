@@ -13,12 +13,25 @@ const ensureTrailingSlash = (value: string): string =>
 
 @Injectable()
 export class AiService {
+  private getRequestTimeoutMs(): number {
+    const raw = process.env.OPENAI_REQUEST_TIMEOUT_MS;
+    const parsed = raw ? Number(raw) : 15_000;
+    if (!Number.isFinite(parsed)) return 15_000;
+    return Math.min(60_000, Math.max(3_000, Math.floor(parsed)));
+  }
+
   private async postJson(url: URL, body: unknown, headers: Record<string, string>): Promise<{ status: number; text: string }> {
     const payload = JSON.stringify(body);
     const client = url.protocol === 'http:' ? http : https;
+    const timeoutMs = this.getRequestTimeoutMs();
 
     return new Promise((resolve, reject) => {
-      const req = client.request(
+      let req: http.ClientRequest;
+      const absoluteTimer = setTimeout(() => {
+        req?.destroy(new Error('timeout'));
+      }, timeoutMs);
+
+      req = client.request(
         {
           method: 'POST',
           protocol: url.protocol,
@@ -39,15 +52,17 @@ export class AiService {
             text += chunk;
           });
           res.on('end', () => {
+            clearTimeout(absoluteTimer);
             resolve({ status: res.statusCode ?? 0, text });
           });
         },
       );
 
-      req.setTimeout(20_000, () => {
-        req.destroy(new Error('timeout'));
+      req.on('close', () => clearTimeout(absoluteTimer));
+      req.on('error', (err) => {
+        clearTimeout(absoluteTimer);
+        reject(err);
       });
-      req.on('error', (err) => reject(err));
       req.write(payload);
       req.end();
     });
@@ -70,7 +85,7 @@ export class AiService {
   }
 
   private getModel(): string {
-    return process.env.OPENAI_MODEL ?? 'GPT-5.2 Codex';
+    return process.env.OPENAI_MODEL ?? 'GPT-5.3 Codex';
   }
 
   private async chat(system: string, user: string): Promise<string> {

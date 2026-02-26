@@ -117,13 +117,21 @@ export const Moments: React.FC<MomentsProps> = ({
     if (isPolishing) return;
     if (!title.trim() && !description.trim()) return;
     setIsPolishing(true);
-    if (title.trim()) {
-      setTitle(await polishText(title, 'moment'));
+    try {
+      const [titleResult, descResult] = await Promise.allSettled([
+        title.trim() ? polishText(title, 'moment') : Promise.resolve(null),
+        description.trim() ? polishText(description, 'moment') : Promise.resolve(null),
+      ]);
+
+      if (titleResult.status === 'fulfilled' && titleResult.value) {
+        setTitle(titleResult.value);
+      }
+      if (descResult.status === 'fulfilled' && descResult.value) {
+        setDescription(descResult.value);
+      }
+    } finally {
+      setIsPolishing(false);
     }
-    if (description.trim()) {
-      setDescription(await polishText(description, 'moment'));
-    }
-    setIsPolishing(false);
   };
 
   const handleSubmit = async () => {
@@ -201,13 +209,21 @@ export const Moments: React.FC<MomentsProps> = ({
     if (editPolishing) return;
     if (!editTitle.trim() && !editDescription.trim()) return;
     setEditPolishing(true);
-    if (editTitle.trim()) {
-      setEditTitle(await polishText(editTitle, 'moment'));
+    try {
+      const [titleResult, descResult] = await Promise.allSettled([
+        editTitle.trim() ? polishText(editTitle, 'moment') : Promise.resolve(null),
+        editDescription.trim() ? polishText(editDescription, 'moment') : Promise.resolve(null),
+      ]);
+
+      if (titleResult.status === 'fulfilled' && titleResult.value) {
+        setEditTitle(titleResult.value);
+      }
+      if (descResult.status === 'fulfilled' && descResult.value) {
+        setEditDescription(descResult.value);
+      }
+    } finally {
+      setEditPolishing(false);
     }
-    if (editDescription.trim()) {
-      setEditDescription(await polishText(editDescription, 'moment'));
-    }
-    setEditPolishing(false);
   };
 
   return (

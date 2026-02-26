@@ -60,13 +60,21 @@ export const Quests: React.FC<QuestsProps> = ({
     if (isPolishing) return;
     if (!title.trim() && !description.trim()) return;
     setIsPolishing(true);
-    if (title.trim()) {
-      setTitle(await polishText(title, 'quest'));
+    try {
+      const [titleResult, descResult] = await Promise.allSettled([
+        title.trim() ? polishText(title, 'quest') : Promise.resolve(null),
+        description.trim() ? polishText(description, 'quest') : Promise.resolve(null),
+      ]);
+
+      if (titleResult.status === 'fulfilled' && titleResult.value) {
+        setTitle(titleResult.value);
+      }
+      if (descResult.status === 'fulfilled' && descResult.value) {
+        setDescription(descResult.value);
+      }
+    } finally {
+      setIsPolishing(false);
     }
-    if (description.trim()) {
-      setDescription(await polishText(description, 'quest'));
-    }
-    setIsPolishing(false);
   };
 
   const resolveUser = (userId?: string | null): UserFrontend | null => {
