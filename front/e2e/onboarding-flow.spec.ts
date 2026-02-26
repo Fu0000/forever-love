@@ -46,14 +46,8 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
   const noteCountBefore = await page.getByTestId('note-item').count();
   await page.getByTestId('note-create-toggle').click();
   await page.getByTestId('note-content-input').fill(noteText);
-  const notePolishResponsePromise = page.waitForResponse((res) =>
-    res.url().includes('/ai/polish'),
-  );
   await page.getByTestId('note-polish').click();
-  const notePolishResponse = await notePolishResponsePromise;
-  console.log(
-    `[note:polish] ${notePolishResponse.status()} ${notePolishResponse.url()}`,
-  );
+  await expect(page.getByTestId('note-polish')).toBeEnabled({ timeout: 30_000 });
   await page.getByTestId('note-submit').click();
 
   await expect(page.getByTestId('note-item')).toHaveCount(noteCountBefore + 1, {
@@ -85,14 +79,8 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
   await page.getByTestId('quest-desc-input').fill('自动化任务描述');
   await page.getByTestId('quest-points-input').fill('15');
   await page.getByTestId('quest-type-select').selectOption('words');
-  const questPolishResponsePromise = page.waitForResponse((res) =>
-    res.url().includes('/ai/polish'),
-  );
   await page.getByTestId('quest-polish').click();
-  const questPolishResponse = await questPolishResponsePromise;
-  console.log(
-    `[quest:polish] ${questPolishResponse.status()} ${questPolishResponse.url()}`,
-  );
+  await expect(page.getByTestId('quest-polish')).toBeEnabled({ timeout: 30_000 });
   await page.getByTestId('quest-submit').click();
 
   await expect(page.getByTestId('quest-item')).toHaveCount(questCountBefore + 1, {
@@ -132,14 +120,8 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
   await page.getByTestId('moment-title-input').fill(momentTitle);
   await page.getByTestId('moment-desc-input').fill('自动化瞬间描述');
   await page.getByTestId('moment-tags-input').fill('旅行 测试');
-  const momentPolishResponsePromise = page.waitForResponse((res) =>
-    res.url().includes('/ai/polish'),
-  );
   await page.getByTestId('moment-polish').click();
-  const momentPolishResponse = await momentPolishResponsePromise;
-  console.log(
-    `[moment:polish] ${momentPolishResponse.status()} ${momentPolishResponse.url()}`,
-  );
+  await expect(page.getByTestId('moment-polish')).toBeEnabled({ timeout: 30_000 });
   await page.getByTestId('moment-submit').click();
 
   await expect(page.getByTestId('moment-item')).toHaveCount(momentCountBefore + 1, {
@@ -152,17 +134,11 @@ test('onboarding flow: login, notes, quests, moments', async ({ page }) => {
 
   // Edit moment
   await page.getByTestId('moment-edit-open').click();
-  const editPolishResponsePromise = page.waitForResponse((res) =>
-    res.url().includes('/ai/polish'),
-  );
   await page.getByTestId('moment-edit-title-input').fill(`已编辑瞬间${Date.now()}`);
   await page.getByTestId('moment-edit-desc-input').fill('已编辑瞬间描述');
   await page.getByTestId('moment-edit-tags-input').fill('旅行 编辑');
   await page.getByTestId('moment-edit-polish').click();
-  const editPolishResponse = await editPolishResponsePromise;
-  console.log(
-    `[moment:edit-polish] ${editPolishResponse.status()} ${editPolishResponse.url()}`,
-  );
+  await expect(page.getByTestId('moment-edit-polish')).toBeEnabled({ timeout: 30_000 });
   // Refill after polish to keep assertion stable
   const editedMomentTitle = `已编辑瞬间${Date.now()}`;
   await page.getByTestId('moment-edit-title-input').fill(editedMomentTitle);

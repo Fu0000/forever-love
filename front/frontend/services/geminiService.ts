@@ -7,27 +7,34 @@ const apiRequest = async <T>(
   body: Record<string, unknown>,
 ): Promise<T> => {
   const token = localStorage.getItem(TOKEN_KEY);
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 25_000);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(
-      `AI API Error: ${response.status} ${response.statusText} - ${text}`,
-    );
-  }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `AI API Error: ${response.status} ${response.statusText} - ${text}`,
+      );
+    }
 
-  const json = (await response.json()) as unknown;
-  if (json && typeof json === 'object' && json !== null && 'data' in json) {
-    return (json as { data: T }).data;
+    const json = (await response.json()) as unknown;
+    if (json && typeof json === 'object' && json !== null && 'data' in json) {
+      return (json as { data: T }).data;
+    }
+    return json as T;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  return json as T;
 };
 
 export const generateLoveNoteSuggestion = async (mood: string, partnerName: string): Promise<string> => {
