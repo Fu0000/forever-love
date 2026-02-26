@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import dns from 'node:dns';
+import http from 'node:http';
+import https from 'node:https';
 import { AppException } from '../../common/errors/app.exception';
 
 type ChatCompletionResponse = {
@@ -10,15 +11,48 @@ type ChatCompletionResponse = {
 const ensureTrailingSlash = (value: string): string =>
   value.endsWith('/') ? value : `${value}/`;
 
-try {
-  // Many VPS/Docker environments have IPv6 disabled; prefer IPv4 to avoid timeouts.
-  dns.setDefaultResultOrder('ipv4first');
-} catch {
-  // Ignore if not supported by runtime.
-}
-
 @Injectable()
 export class AiService {
+  private async postJson(url: URL, body: unknown, headers: Record<string, string>): Promise<{ status: number; text: string }> {
+    const payload = JSON.stringify(body);
+    const client = url.protocol === 'http:' ? http : https;
+
+    return new Promise((resolve, reject) => {
+      const req = client.request(
+        {
+          method: 'POST',
+          protocol: url.protocol,
+          hostname: url.hostname,
+          port: url.port ? Number(url.port) : url.protocol === 'http:' ? 80 : 443,
+          path: `${url.pathname}${url.search}`,
+          headers: {
+            ...headers,
+            'Content-Length': Buffer.byteLength(payload).toString(),
+          },
+          // Many VPS/Docker environments have IPv6 disabled; force IPv4 to avoid timeouts.
+          family: 4,
+        },
+        (res) => {
+          let text = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            text += chunk;
+          });
+          res.on('end', () => {
+            resolve({ status: res.statusCode ?? 0, text });
+          });
+        },
+      );
+
+      req.setTimeout(20_000, () => {
+        req.destroy(new Error('timeout'));
+      });
+      req.on('error', (err) => reject(err));
+      req.write(payload);
+      req.end();
+    });
+  }
+
   private getBaseUrl(): string {
     return process.env.OPENAI_BASE_URL ?? 'https://api.123nhh.me/v1';
   }
@@ -45,17 +79,10 @@ export class AiService {
     const baseUrl = ensureTrailingSlash(this.getBaseUrl());
     const url = new URL('chat/completions', baseUrl);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20_000);
-
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
+      const { status, text } = await this.postJson(
+        url,
+        {
           model,
           temperature: 0.7,
           max_completion_tokens: 250,
@@ -63,11 +90,13 @@ export class AiService {
             { role: 'system', content: system },
             { role: 'user', content: user },
           ],
-        }),
-        signal: controller.signal,
-      });
+        },
+        {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      );
 
-      const text = await response.text();
       let json: ChatCompletionResponse | null = null;
       try {
         json = text ? (JSON.parse(text) as ChatCompletionResponse) : null;
@@ -75,10 +104,10 @@ export class AiService {
         json = null;
       }
 
-      if (!response.ok) {
+      if (status < 200 || status >= 300) {
         const message =
           json?.error?.message ??
-          (text ? text.slice(0, 500) : `HTTP ${response.status}`);
+          (text ? text.slice(0, 500) : `HTTP ${status}`);
         throw new AppException(502, 'OPENAI_ERROR', message);
       }
 
@@ -93,12 +122,11 @@ export class AiService {
       return content.trim();
     } catch (error) {
       if (error instanceof AppException) throw error;
-      if ((error as Error)?.name === 'AbortError') {
+      if ((error as Error)?.message === 'timeout') {
         throw new AppException(504, 'OPENAI_TIMEOUT', 'OpenAI request timed out');
       }
       throw new AppException(502, 'OPENAI_ERROR', (error as Error)?.message ?? 'OpenAI request failed');
     } finally {
-      clearTimeout(timeout);
     }
   }
 
