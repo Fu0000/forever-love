@@ -10,6 +10,8 @@ import {
   CupidConversationSummary,
   CupidConversationDetail,
   ChatMessage,
+  IntimacySummary,
+  IntimacyEvent,
 } from '../types';
 
 const API_BASE_URL =
@@ -369,7 +371,6 @@ export const storageService = {
   updateCouple: async (coupleId: string, data: Partial<CoupleData>): Promise<CoupleData> => {
     const payload: any = {};
     if (data.anniversaryDate) payload.anniversaryDate = data.anniversaryDate; // ISO String
-    if (data.intimacyScore !== undefined) payload.intimacyScore = data.intimacyScore;
 
     const updated = await apiRequest(`/couples/${coupleId}`, {
       method: 'PATCH',
@@ -378,6 +379,54 @@ export const storageService = {
     
     // Re-fetch to get full structure if needed, or merge
     return { ...updated, users: [] }; // Simplified return, caller usually refreshes or merges
+  },
+
+  // --- Intimacy ---
+
+  getIntimacy: async (coupleId: string): Promise<IntimacySummary> => {
+    return apiRequest(`/couples/${coupleId}/intimacy`);
+  },
+
+  listIntimacyEvents: async (
+    coupleId: string,
+    params?: { limit?: number; cursor?: string | null },
+  ): Promise<{ items: IntimacyEvent[]; nextCursor: string | null }> => {
+    const limit = params?.limit ?? 20;
+    const cursor = params?.cursor ?? null;
+    const qs = new URLSearchParams();
+    qs.set('limit', String(limit));
+    if (cursor) qs.set('cursor', cursor);
+
+    const envelope = await apiRequestEnvelope<IntimacyEvent[]>(
+      `/couples/${coupleId}/intimacy/events?${qs.toString()}`,
+    );
+    return {
+      items: envelope.data ?? [],
+      nextCursor:
+        (envelope.meta?.nextCursor as string | null | undefined) ?? null,
+    };
+  },
+
+  surpriseClick: async (
+    coupleId: string,
+    type: 'gift' | 'cat' | 'dog' | 'balloon',
+    clientEventId: string,
+  ): Promise<{ points: number; score: number }> => {
+    return apiRequest(`/couples/${coupleId}/intimacy/surprise/click`, {
+      method: 'POST',
+      body: JSON.stringify({ type, clientEventId }),
+    });
+  },
+
+  romanticSceneEnter: async (
+    coupleId: string,
+    sceneId: string,
+    clientEventId: string,
+  ): Promise<{ points: number; score: number }> => {
+    return apiRequest(`/couples/${coupleId}/intimacy/romantic/action`, {
+      method: 'POST',
+      body: JSON.stringify({ sceneId, clientEventId, action: 'scene_enter' }),
+    });
   },
 
   findCoupleByUserId: async (userId: string, me?: User): Promise<CoupleData | null> => {

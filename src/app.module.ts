@@ -15,6 +15,7 @@ import { MomentsModule } from './modules/moments/moments.module';
 import { MediaModule } from './modules/media/media.module';
 import { PairRequestsModule } from './modules/pair-requests/pair-requests.module';
 import { AiModule } from './modules/ai/ai.module';
+import { IntimacyModule } from './modules/intimacy/intimacy.module';
 import { HealthController } from './health.controller';
 import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 
@@ -34,6 +35,7 @@ import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
     MediaModule,
     PairRequestsModule,
     AiModule,
+    IntimacyModule,
   ],
   controllers: [HealthController],
   providers: [

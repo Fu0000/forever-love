@@ -5,16 +5,19 @@ import { withMeta } from '../../common/utils/api-meta';
 import { decodeCursor, encodeCursor } from '../../common/utils/cursor';
 import { CouplesService } from '../couples/couples.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { IntimacyService } from '../intimacy/intimacy.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { ListNotesDto } from './dto/list-notes.dto';
 import { generateEntityId } from '../../common/utils/id';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { IntimacyEventType } from '@prisma/client';
 
 @Injectable()
 export class NotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couplesService: CouplesService,
+    private readonly intimacyService: IntimacyService,
   ) {}
 
   async list(
@@ -115,16 +118,31 @@ export class NotesService {
   }> {
     await this.couplesService.assertMember(coupleId, userId);
 
-    const created = await this.prisma.note.create({
-      data: {
-        id: generateEntityId('note_'),
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.note.create({
+        data: {
+          id: generateEntityId('note_'),
+          coupleId,
+          authorId: userId,
+          content: dto.content,
+          color: dto.color,
+          mediaUrl: dto.media?.url,
+          mediaType: dto.media?.type,
+        },
+      });
+
+      await this.intimacyService.award(
         coupleId,
-        authorId: userId,
-        content: dto.content,
-        color: dto.color,
-        mediaUrl: dto.media?.url,
-        mediaType: dto.media?.type,
-      },
+        userId,
+        IntimacyEventType.NOTE_CREATE,
+        {
+          dedupeKey: `note:${row.id}:create`,
+          meta: { noteId: row.id, content: row.content },
+          tx,
+        },
+      );
+
+      return row;
     });
 
     return {
@@ -160,6 +178,14 @@ export class NotesService {
     }
 
     await this.couplesService.assertMember(note.coupleId, userId);
+
+    await this.intimacyService.revokeCreateAward(
+      note.coupleId,
+      userId,
+      `note:${note.id}:create`,
+      `note:${note.id}:delete`,
+      IntimacyEventType.NOTE_DELETE,
+    );
     await this.prisma.note.delete({ where: { id: noteId } });
   }
 

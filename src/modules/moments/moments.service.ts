@@ -6,16 +6,19 @@ import { decodeCursor, encodeCursor } from '../../common/utils/cursor';
 import { toDateOnlyString } from '../../common/utils/date';
 import { generateEntityId } from '../../common/utils/id';
 import { CouplesService } from '../couples/couples.service';
+import { IntimacyService } from '../intimacy/intimacy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMomentDto } from './dto/create-moment.dto';
 import { ListMomentsDto } from './dto/list-moments.dto';
 import { UpdateMomentDto } from './dto/update-moment.dto';
+import { IntimacyEventType } from '@prisma/client';
 
 @Injectable()
 export class MomentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couplesService: CouplesService,
+    private readonly intimacyService: IntimacyService,
   ) {}
 
   private mapMoment(moment: {
@@ -139,17 +142,32 @@ export class MomentsService {
   }> {
     await this.couplesService.assertMember(coupleId, userId);
 
-    const created = await this.prisma.moment.create({
-      data: {
-        id: generateEntityId('mmt_'),
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.moment.create({
+        data: {
+          id: generateEntityId('mmt_'),
+          coupleId,
+          createdBy: userId,
+          title: dto.title,
+          description: dto.description,
+          date: new Date(dto.date),
+          imageUrl: dto.imageUrl,
+          tags: dto.tags ?? [],
+        },
+      });
+
+      await this.intimacyService.award(
         coupleId,
-        createdBy: userId,
-        title: dto.title,
-        description: dto.description,
-        date: new Date(dto.date),
-        imageUrl: dto.imageUrl,
-        tags: dto.tags ?? [],
-      },
+        userId,
+        IntimacyEventType.MOMENT_CREATE,
+        {
+          dedupeKey: `moment:${row.id}:create`,
+          meta: { momentId: row.id, tags: row.tags },
+          tx,
+        },
+      );
+
+      return row;
     });
 
     return this.mapMoment(created);
@@ -173,6 +191,14 @@ export class MomentsService {
     }
 
     await this.couplesService.assertMember(moment.coupleId, actorUserId);
+
+    await this.intimacyService.revokeCreateAward(
+      moment.coupleId,
+      actorUserId,
+      `moment:${moment.id}:create`,
+      `moment:${moment.id}:delete`,
+      IntimacyEventType.MOMENT_DELETE,
+    );
     await this.prisma.moment.delete({ where: { id: momentId } });
   }
 

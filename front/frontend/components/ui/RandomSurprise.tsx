@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, Heart, Sparkles, X } from 'lucide-react';
 import { Button } from './Button';
+import { storageService } from '../../services/storage';
 
 type SurpriseType = 'gift' | 'cat' | 'dog' | 'balloon';
 
@@ -12,9 +13,14 @@ interface SurpriseInstance {
   y: number;
 }
 
-export const RandomSurprise: React.FC = () => {
+export const RandomSurprise: React.FC<{
+  coupleId: string | null;
+  onAward?: (points: number) => void;
+}> = ({ coupleId, onAward }) => {
   const [surprises, setSurprises] = useState<SurpriseInstance[]>([]);
   const [openedGift, setOpenedGift] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [lastPoints, setLastPoints] = useState<number | null>(null);
 
   const gifts = [
     "一张‘抱抱券’，随时兑换！🤗",
@@ -47,7 +53,31 @@ export const RandomSurprise: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSurpriseClick = (surprise: SurpriseInstance) => {
+  const handleSurpriseClick = async (surprise: SurpriseInstance) => {
+    if (toast) setToast(null);
+    setLastPoints(null);
+
+    if (coupleId) {
+      const clientEventId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID().replace(/-/g, '')
+          : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      try {
+        const result = await storageService.surpriseClick(
+          coupleId,
+          surprise.type,
+          clientEventId,
+        );
+        if (result.points > 0) {
+          setToast(`亲密度 +${result.points}`);
+          setLastPoints(result.points);
+          onAward?.(result.points);
+        }
+      } catch (e) {
+        console.error('Surprise award failed', e);
+      }
+    }
+
     if (surprise.type === 'gift') {
       setOpenedGift(gifts[Math.floor(Math.random() * gifts.length)]);
     }
@@ -83,6 +113,17 @@ export const RandomSurprise: React.FC = () => {
       </div>
 
       <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white px-4 py-2 rounded-full font-black text-sm shadow-xl"
+          >
+            {toast}
+          </motion.div>
+        )}
+
         {openedGift && (
           <motion.div 
             initial={{ opacity: 0 }}
@@ -103,6 +144,11 @@ export const RandomSurprise: React.FC = () => {
               </div>
               <h3 className="text-xl font-black text-gray-800 mb-2 font-cute">惊喜礼物！</h3>
               <p className="text-gray-600 font-medium leading-relaxed">{openedGift}</p>
+              {lastPoints && lastPoints > 0 && (
+                <div className="mt-3 text-rose-500 font-black">
+                  亲密度 +{lastPoints}
+                </div>
+              )}
               <Button className="mt-6 w-full rounded-full" onClick={() => setOpenedGift(null)}>
                 收下啦 ❤️
               </Button>

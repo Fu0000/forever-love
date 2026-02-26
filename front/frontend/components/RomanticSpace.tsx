@@ -2,11 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Sparkles, Sun, Moon, Cloud, Flower2, Cat, Play, Wind } from 'lucide-react';
 import { Button } from './ui/Button';
+import { storageService } from '../services/storage';
 
 type SceneType = 'menu' | 'fireworks' | 'sunset' | 'stars' | 'balloons' | 'garden' | 'pets';
 
-export const RomanticSpace: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const RomanticSpace: React.FC<{
+  coupleId: string | null;
+  onAward?: (points: number) => void;
+  onClose: () => void;
+}> = ({ coupleId, onAward, onClose }) => {
   const [activeScene, setActiveScene] = useState<SceneType>('menu');
+  const [toast, setToast] = useState<string | null>(null);
 
   const scenes = [
     { id: 'fireworks', label: '浪漫烟花秀', icon: <Sparkles />, color: 'from-indigo-600 to-purple-900', desc: '在夜空中绽放我们的爱' },
@@ -17,6 +23,28 @@ export const RomanticSpace: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     { id: 'pets', label: '一起喂小猫', icon: <Cat />, color: 'from-amber-300 to-orange-500', desc: '守护这份纯真的温柔' },
   ];
 
+  const awardSceneEnter = async (sceneId: string) => {
+    if (!coupleId) return;
+    const clientEventId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID().replace(/-/g, '')
+        : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    try {
+      const result = await storageService.romanticSceneEnter(
+        coupleId,
+        sceneId,
+        clientEventId,
+      );
+      if (result.points > 0) {
+        setToast(`亲密度 +${result.points}`);
+        onAward?.(result.points);
+        window.setTimeout(() => setToast(null), 1800);
+      }
+    } catch (e) {
+      console.error('Failed to award romantic action', e);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -24,6 +52,19 @@ export const RomanticSpace: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col"
     >
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[120] bg-rose-600 text-white px-4 py-2 rounded-full font-black text-sm shadow-xl"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {activeScene === 'menu' ? (
           <motion.div 
@@ -54,7 +95,10 @@ export const RomanticSpace: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                   transition={{ delay: idx * 0.1 }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setActiveScene(scene.id as SceneType)}
+                  onClick={async () => {
+                    setActiveScene(scene.id as SceneType);
+                    await awardSceneEnter(scene.id);
+                  }}
                   className={`bg-gradient-to-r ${scene.color} p-6 rounded-[2rem] text-white text-left flex items-center justify-between shadow-xl relative overflow-hidden group`}
                 >
                   <div className="flex items-center gap-4 relative z-10">

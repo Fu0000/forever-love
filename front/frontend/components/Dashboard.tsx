@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CoupleData, UserFrontend } from '../types';
 import { Button } from './ui/Button';
 import { PairRequestPanel } from './PairRequestPanel';
+import { IntimacyEvent } from '../types';
 
 const INTIMACY_LEVELS: Array<{ level: number; title: string; hint: string }> = [
   { level: 1, title: '初遇', hint: '认识彼此，一切刚刚开始' },
@@ -53,11 +54,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
     ? differenceInDays(new Date(), new Date(data.anniversaryDate)) 
     : 0;
   
-  const level = Math.floor(data.intimacyScore / 100) + 1;
-  const progress = data.intimacyScore % 100;
-  const levelTitle = getIntimacyTitle(level);
-  const nextTarget = level * 100;
-  const remaining = Math.max(0, nextTarget - data.intimacyScore);
+  const summary = data.intimacy;
+  const score = summary?.score ?? data.intimacyScore;
+  const level = summary?.level ?? (Math.floor(score / 100) + 1);
+  const levelTitle = summary?.title ?? getIntimacyTitle(level);
+  const levelStart = summary?.levelStart ?? (Math.floor(score / 100) * 100);
+  const nextTarget = summary?.nextThreshold ?? (level * 100);
+  const progressPoints = Math.max(0, score - levelStart);
+  const progressTotal = Math.max(1, nextTarget - levelStart);
+  const progress = Math.min(100, Math.round((progressPoints / progressTotal) * 100));
+  const remaining = Math.max(0, nextTarget - score);
+  const todayEarned = summary?.todayEarned ?? 0;
+  const todayCap = summary?.todayCap ?? 0;
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value).getTime();
@@ -124,6 +132,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
               <p className="text-3xl font-black flex items-center gap-2 font-cute">
                 Lv.{level} <span className="text-base text-rose-100 font-black">{levelTitle}</span>
               </p>
+              {summary?.hint && (
+                <p className="mt-1 text-[11px] text-white/80 font-bold">
+                  {summary.hint}
+                </p>
+              )}
               <button
                 type="button"
                 className="mt-2 text-[11px] font-black text-white/80 hover:text-white underline underline-offset-4"
@@ -133,10 +146,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
               </button>
             </div>
             <div className="text-right">
-              <p className="text-rose-100 text-[10px] font-bold">{data.intimacyScore} / {(level) * 100} 积分</p>
+              <p className="text-rose-100 text-[10px] font-bold">{score} / {nextTarget} 积分</p>
               <p className="text-rose-100 text-[10px] font-bold mt-1">
                 距离 Lv.{level + 1} 还差 {remaining} 分
               </p>
+              {todayCap > 0 && (
+                <p className="text-rose-100 text-[10px] font-bold mt-1">
+                  今日已获得 {todayEarned} / {todayCap}
+                </p>
+              )}
               <Flame className="w-8 h-8 text-orange-300 inline-block animate-bounce" fill="currentColor" />
             </div>
           </div>
@@ -145,6 +163,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
           </div>
         </div>
       </motion.div>
+
+      {data.intimacyEvents && data.intimacyEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[2rem] p-6 shadow-xl border-2 border-rose-100"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-black font-cute text-gray-800">最近获得</h3>
+            <div className="text-xs font-black text-gray-400">
+              今日 {todayEarned}/{todayCap || '∞'}
+            </div>
+          </div>
+          <div className="space-y-3">
+            {data.intimacyEvents.slice(0, 8).map((evt) => (
+              <IntimacyEventRow
+                key={evt.id}
+                evt={evt}
+                currentUserId={currentUser.id}
+                users={data.users}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {levelOpen && (
@@ -163,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
                 <div>
                   <h3 className="text-xl font-black font-cute text-gray-800">亲密度等级体系</h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    每满 100 分提升 1 级（不封顶）
+                    升级所需积分会逐级增加（不封顶）
                   </p>
                 </div>
                 <button
@@ -198,7 +241,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
                         Lv.{row.level} · {row.title}
                       </div>
                       <div className="text-[11px] font-black text-gray-400">
-                        {((row.level - 1) * 100).toString()}–{(row.level * 100 - 1).toString()}
+                        {levelRangeText(row.level)}
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-gray-600 font-bold">
@@ -312,6 +355,93 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, currentUser, onUpdat
           <h3 className="font-black text-2xl text-gray-800 font-cute">{data.quests.filter(q => q.status === 'COMPLETED').length}</h3>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">完成任务</p>
         </motion.div>
+      </div>
+    </div>
+  );
+};
+
+const computeThresholds = (maxLevel: number): Array<{ level: number; start: number; end: number }> => {
+  const out: Array<{ level: number; start: number; end: number }> = [];
+  let start = 0;
+  for (let level = 1; level <= maxLevel; level += 1) {
+    const delta = 80 + 20 * (level - 1);
+    const end = start + delta - 1;
+    out.push({ level, start, end });
+    start += delta;
+  }
+  return out;
+};
+
+const LEVEL_THRESHOLDS = computeThresholds(10);
+
+const levelRangeText = (level: number): string => {
+  const found = LEVEL_THRESHOLDS.find((row) => row.level === level);
+  if (!found) return '-';
+  return `${found.start}–${found.end}`;
+};
+
+const formatEventTitle = (evt: IntimacyEvent): string => {
+  switch (evt.type) {
+    case 'NOTE_CREATE':
+      return '写日记';
+    case 'NOTE_DELETE':
+      return '删除日记';
+    case 'MOMENT_CREATE':
+      return '记录瞬间';
+    case 'MOMENT_DELETE':
+      return '删除瞬间';
+    case 'QUEST_CREATE':
+      return '发布任务';
+    case 'QUEST_COMPLETE':
+      return '完成任务';
+    case 'QUEST_DELETE':
+      return '删除任务';
+    case 'PAIR_SUCCESS':
+      return '配对成功';
+    case 'ANNIVERSARY_SET':
+      return '设置纪念日';
+    case 'SURPRISE_CLICK':
+      return '点击惊喜';
+    case 'ROMANTIC_ACTION':
+      return '浪漫空间';
+    case 'LEGACY_IMPORT':
+      return '历史积分';
+    default:
+      return evt.type;
+  }
+};
+
+const resolveUserName = (
+  evt: IntimacyEvent,
+  users: Array<{ id: string; name: string }> | undefined,
+  currentUserId: string,
+): string => {
+  if (!evt.userId) return '系统';
+  const user = users?.find((u) => u.id === evt.userId);
+  if (!user) return evt.userId === currentUserId ? '我' : '对方';
+  return user.id === currentUserId ? '我' : user.name;
+};
+
+const IntimacyEventRow: React.FC<{
+  evt: IntimacyEvent;
+  currentUserId: string;
+  users: Array<{ id: string; name: string }>;
+}> = ({ evt, currentUserId, users }) => {
+  const who = resolveUserName(evt, users, currentUserId);
+  const pointsText = evt.points > 0 ? `+${evt.points}` : `${evt.points}`;
+  const pointsColor = evt.points > 0 ? 'text-rose-600' : 'text-gray-400';
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-sm font-black text-gray-800 truncate">
+          {formatEventTitle(evt)}
+        </div>
+        <div className="text-[11px] font-bold text-gray-400 truncate">
+          {who} · {new Date(evt.createdAt).toLocaleString()}
+        </div>
+      </div>
+      <div className={`text-sm font-black shrink-0 ${pointsColor}`}>
+        {pointsText}
       </div>
     </div>
   );

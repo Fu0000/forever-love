@@ -5,6 +5,8 @@ import { generateEntityId, generatePairCode } from '../../common/utils/id';
 import { Prisma } from '@prisma/client';
 import { UpdateCoupleDto } from './dto/update-couple.dto';
 import { toDateOnlyString } from '../../common/utils/date';
+import { IntimacyService } from '../intimacy/intimacy.service';
+import { IntimacyEventType } from '@prisma/client';
 
 type CoupleWithUsers = Prisma.CoupleGetPayload<{
   include: {
@@ -15,7 +17,10 @@ type CoupleWithUsers = Prisma.CoupleGetPayload<{
 
 @Injectable()
 export class CouplesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly intimacyService: IntimacyService,
+  ) {}
 
   async ensureUserCouplePointers(userId: string): Promise<{
     homeCoupleId: string | null;
@@ -330,6 +335,16 @@ export class CouplesService {
 
     await this.setActiveCouple(userId, coupleByCode.id);
 
+    await this.intimacyService.award(
+      coupleByCode.id,
+      userId,
+      IntimacyEventType.PAIR_SUCCESS,
+      {
+        dedupeKey: `pair:success:${coupleByCode.id}`,
+        meta: { method: 'pair_code_join' },
+      },
+    );
+
     const updated = await this.prisma.couple.findUnique({
       where: { id: coupleByCode.id },
       include: {
@@ -397,18 +412,39 @@ export class CouplesService {
   }> {
     await this.assertMember(coupleId, actorUserId);
 
-    const updated = await this.prisma.couple.update({
-      where: { id: coupleId },
-      data: {
-        anniversaryDate: dto.anniversaryDate
-          ? new Date(dto.anniversaryDate)
-          : undefined,
-        intimacyScore: dto.intimacyScore,
-      },
-      include: {
-        creator: true,
-        partner: true,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const before = await tx.couple.findUnique({
+        where: { id: coupleId },
+        select: { anniversaryDate: true },
+      });
+
+      const row = await tx.couple.update({
+        where: { id: coupleId },
+        data: {
+          anniversaryDate: dto.anniversaryDate
+            ? new Date(dto.anniversaryDate)
+            : undefined,
+        },
+        include: {
+          creator: true,
+          partner: true,
+        },
+      });
+
+      if (!before?.anniversaryDate && dto.anniversaryDate) {
+        await this.intimacyService.award(
+          coupleId,
+          actorUserId,
+          IntimacyEventType.ANNIVERSARY_SET,
+          {
+            dedupeKey: `anniversary:set:${coupleId}`,
+            meta: { anniversaryDate: dto.anniversaryDate },
+            tx,
+          },
+        );
+      }
+
+      return row;
     });
 
     return this.mapCouple(updated);

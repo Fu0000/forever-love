@@ -25,6 +25,27 @@ const App: React.FC = () => {
   const [hasAuth, setHasAuth] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
+  const refreshIntimacy = async (coupleId: string) => {
+    try {
+      const [summary, events] = await Promise.all([
+        storageService.getIntimacy(coupleId),
+        storageService.listIntimacyEvents(coupleId, { limit: 10 }),
+      ]);
+      setCoupleData((prev) =>
+        prev
+          ? {
+              ...prev,
+              intimacy: summary,
+              intimacyScore: summary.score,
+              intimacyEvents: events.items,
+            }
+          : prev,
+      );
+    } catch (e) {
+      console.error('Failed to refresh intimacy', e);
+    }
+  };
+
   // Load initial state
   useEffect(() => {
     let cancelled = false;
@@ -63,15 +84,28 @@ const App: React.FC = () => {
           if (data) {
             setCoupleData(data);
             
-            const [notes, quests, moments] = await Promise.all([
+            const [notes, quests, moments, intimacy, intimacyEvents] = await Promise.all([
               storageService.getNotes(data.id),
               storageService.getQuests(data.id),
-              storageService.getMoments(data.id)
+              storageService.getMoments(data.id),
+              storageService.getIntimacy(data.id),
+              storageService.listIntimacyEvents(data.id, { limit: 10 }),
             ]);
 
             if (cancelled) return;
             setCoupleData(prev =>
               prev ? ({ ...prev, notes, quests, moments }) : ({ ...data, notes, quests, moments }),
+            );
+
+            setCoupleData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    intimacy,
+                    intimacyScore: intimacy.score,
+                    intimacyEvents: intimacyEvents.items,
+                  }
+                : prev,
             );
           }
         } catch (e) {
@@ -143,16 +177,8 @@ const App: React.FC = () => {
       setCoupleData(prev => prev ? ({
         ...prev,
         notes: [newNote, ...prev.notes],
-        intimacyScore: prev.intimacyScore + 5
       }) : null);
-      
-      storageService
-        .updateCouple(coupleData.id, {
-          intimacyScore: coupleData.intimacyScore + 5,
-        })
-        .catch((e) => {
-          console.error('Failed to update couple intimacy score', e);
-        });
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to add note", e);
     }
@@ -198,6 +224,7 @@ const App: React.FC = () => {
         ...prev,
         notes: prev.notes.filter(n => n.id !== id)
       }) : null);
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to delete note", e);
     }
@@ -217,16 +244,9 @@ const App: React.FC = () => {
       setCoupleData(prev => prev ? ({
         ...prev,
         moments: [newMoment, ...prev.moments],
-        intimacyScore: prev.intimacyScore + 10
       }) : null);
 
-      storageService
-        .updateCouple(coupleData.id, {
-          intimacyScore: coupleData.intimacyScore + 10,
-        })
-        .catch((e) => {
-          console.error('Failed to update couple intimacy score', e);
-        });
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to add moment", e);
     }
@@ -260,6 +280,7 @@ const App: React.FC = () => {
         ...prev,
         moments: prev.moments.filter(m => m.id !== id)
       }) : null);
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to delete moment", e);
     }
@@ -279,6 +300,7 @@ const App: React.FC = () => {
         ...prev,
         quests: [newQuest, ...prev.quests]
       }) : null);
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to add quest", e);
     }
@@ -292,7 +314,6 @@ const App: React.FC = () => {
         description: updatedQuest.description,
         points: updatedQuest.points,
         type: updatedQuest.type,
-        status: updatedQuest.status,
       });
 
       setCoupleData(prev => prev ? ({
@@ -312,6 +333,7 @@ const App: React.FC = () => {
         ...prev,
         quests: prev.quests.filter(q => q.id !== id)
       }) : null);
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to delete quest", e);
     }
@@ -326,15 +348,10 @@ const App: React.FC = () => {
         if (!prev) return null;
         return {
           ...prev,
-          intimacyScore: prev.intimacyScore + completedQuest.points,
           quests: prev.quests.map(q => q.id === id ? completedQuest : q)
         };
       });
-
-      const quest = coupleData.quests.find(q => q.id === id);
-      if (quest) {
-         await storageService.updateCouple(coupleData.id, { intimacyScore: coupleData.intimacyScore + quest.points });
-      }
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to complete quest", e);
     }
@@ -346,6 +363,7 @@ const App: React.FC = () => {
       const dateStr = new Date(date).toISOString();
       await storageService.updateCouple(coupleData.id, { anniversaryDate: dateStr });
       setCoupleData(prev => prev ? ({ ...prev, anniversaryDate: dateStr }) : null);
+      void refreshIntimacy(coupleData.id);
     } catch (e) {
       console.error("Failed to update anniversary", e);
     }
@@ -445,11 +463,22 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-rose-50 font-sans text-gray-900 max-w-md mx-auto shadow-2xl overflow-hidden relative flex flex-col border-x-8 border-white">
       <FloatingHearts />
       <Petals />
-      <RandomSurprise />
+      <RandomSurprise
+        coupleId={coupleData?.id ?? null}
+        onAward={(_points) => {
+          if (coupleData?.id) void refreshIntimacy(coupleData.id);
+        }}
+      />
       
       <AnimatePresence>
         {activeTab === 'romantic' && (
-          <RomanticSpace onClose={() => setActiveTab('dashboard')} />
+          <RomanticSpace
+            coupleId={coupleData?.id ?? null}
+            onAward={(_points) => {
+              if (coupleData?.id) void refreshIntimacy(coupleData.id);
+            }}
+            onClose={() => setActiveTab('dashboard')}
+          />
         )}
         {showProfile && (
           <Profile 

@@ -99,6 +99,9 @@ export interface CoupleData {
   moments: Moment[];
   quests: Quest[];
   users: UserFrontend[]; // Should contain 1 or 2 users
+
+  intimacy?: IntimacySummary;
+  intimacyEvents?: IntimacyEvent[];
 }
 
 // Local session state
@@ -132,4 +135,24 @@ export interface OutgoingPairRequest {
   createdAt: string;
   respondedAt: string | null;
   toUser: PairRequestUserLite;
+}
+
+export interface IntimacySummary {
+  score: number;
+  level: number;
+  title: string;
+  hint: string;
+  levelStart: number;
+  nextThreshold: number;
+  todayEarned: number;
+  todayCap: number;
+}
+
+export interface IntimacyEvent {
+  id: string;
+  userId: string | null;
+  type: string;
+  points: number;
+  meta: Record<string, unknown> | null;
+  createdAt: string;
 }

@@ -3,7 +3,9 @@ import { PairRequestStatus, Prisma } from '@prisma/client';
 import { AppException } from '../../common/errors/app.exception';
 import { generateEntityId, generatePairCode } from '../../common/utils/id';
 import { CouplesService } from '../couples/couples.service';
+import { IntimacyService } from '../intimacy/intimacy.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { IntimacyEventType } from '@prisma/client';
 
 type PairRequestWithUsers = Prisma.PairRequestGetPayload<{
   include: {
@@ -30,6 +32,7 @@ export class PairRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couplesService: CouplesService,
+    private readonly intimacyService: IntimacyService,
   ) {}
 
   private resolveTargetWhere(
@@ -562,6 +565,17 @@ export class PairRequestsService {
           respondedAt: now,
         },
       });
+
+      await this.intimacyService.award(
+        accepted.coupleId,
+        actorUserId,
+        IntimacyEventType.PAIR_SUCCESS,
+        {
+          dedupeKey: `pair:success:${accepted.coupleId}`,
+          meta: { method: 'pair_request_accept', requestId },
+          tx,
+        },
+      );
 
       return accepted;
     });

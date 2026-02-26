@@ -1,10 +1,11 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma, QuestStatus } from '@prisma/client';
+import { IntimacyEventType, Prisma, QuestStatus } from '@prisma/client';
 import { AppException } from '../../common/errors/app.exception';
 import { withMeta } from '../../common/utils/api-meta';
 import { decodeCursor, encodeCursor } from '../../common/utils/cursor';
 import { generateEntityId } from '../../common/utils/id';
 import { CouplesService } from '../couples/couples.service';
+import { IntimacyService } from '../intimacy/intimacy.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { ListQuestsDto } from './dto/list-quests.dto';
@@ -18,6 +19,7 @@ export class QuestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly couplesService: CouplesService,
+    private readonly intimacyService: IntimacyService,
   ) {}
 
   private mapQuest(quest: {
@@ -158,17 +160,32 @@ export class QuestsService {
   }> {
     await this.couplesService.assertMember(coupleId, userId);
 
-    const created = await this.prisma.quest.create({
-      data: {
-        id: generateEntityId('qst_'),
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.quest.create({
+        data: {
+          id: generateEntityId('qst_'),
+          coupleId,
+          title: dto.title,
+          description: dto.description,
+          points: dto.points,
+          type: dto.type,
+          status: QuestStatus.ACTIVE,
+          createdBy: userId,
+        },
+      });
+
+      await this.intimacyService.award(
         coupleId,
-        title: dto.title,
-        description: dto.description,
-        points: dto.points,
-        type: dto.type,
-        status: QuestStatus.ACTIVE,
-        createdBy: userId,
-      },
+        userId,
+        IntimacyEventType.QUEST_CREATE,
+        {
+          dedupeKey: `quest:${row.id}:create`,
+          meta: { questId: row.id },
+          tx,
+        },
+      );
+
+      return row;
     });
 
     return this.mapQuest(created);
@@ -254,13 +271,44 @@ export class QuestsService {
       return this.mapQuest(quest);
     }
 
-    const updated = await this.prisma.quest.update({
-      where: { id: questId },
-      data: {
-        status: QuestStatus.COMPLETED,
-        completedAt: new Date(),
-        completedBy: actorUserId,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const updateResult = await tx.quest.updateMany({
+        where: { id: questId, status: QuestStatus.ACTIVE },
+        data: {
+          status: QuestStatus.COMPLETED,
+          completedAt: now,
+          completedBy: actorUserId,
+        },
+      });
+
+      const row = await tx.quest.findUnique({ where: { id: questId } });
+      if (!row) {
+        throw new AppException(
+          HttpStatus.NOT_FOUND,
+          'NOT_FOUND',
+          'Quest not found',
+        );
+      }
+
+      if (updateResult.count > 0) {
+        await this.intimacyService.award(
+          row.coupleId,
+          actorUserId,
+          IntimacyEventType.QUEST_COMPLETE,
+          {
+            dedupeKey: `quest:${row.id}:complete`,
+            meta: {
+              questId: row.id,
+              questPoints: row.points,
+              questCreatedBy: row.createdBy,
+            },
+            tx,
+          },
+        );
+      }
+
+      return row;
     });
 
     return this.mapQuest(updated);
@@ -284,6 +332,14 @@ export class QuestsService {
     }
 
     await this.couplesService.assertMember(quest.coupleId, actorUserId);
+
+    await this.intimacyService.revokeCreateAward(
+      quest.coupleId,
+      actorUserId,
+      `quest:${quest.id}:create`,
+      `quest:${quest.id}:delete`,
+      IntimacyEventType.QUEST_DELETE,
+    );
     await this.prisma.quest.delete({ where: { id: questId } });
   }
 }

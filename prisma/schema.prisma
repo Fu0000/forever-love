@@ -19,6 +19,21 @@ enum PairRequestStatus {
   CANCELED
 }
 
+enum IntimacyEventType {
+  LEGACY_IMPORT
+  NOTE_CREATE
+  NOTE_DELETE
+  MOMENT_CREATE
+  MOMENT_DELETE
+  QUEST_CREATE
+  QUEST_DELETE
+  QUEST_COMPLETE
+  PAIR_SUCCESS
+  ANNIVERSARY_SET
+  SURPRISE_CLICK
+  ROMANTIC_ACTION
+}
+
 model User {
   id              String   @id @db.VarChar(32)
   clientUserId    String?  @unique @db.VarChar(64)
@@ -39,6 +54,7 @@ model User {
   completedQuests Quest[]  @relation("QuestCompletedBy")
   moments         Moment[]
   cupidConversations CupidConversation[]
+  intimacyEvents  IntimacyEvent[]
 
   @@index([homeCoupleId])
   @@index([activeCoupleId])
@@ -61,8 +77,27 @@ model Couple {
   notes           Note[]
   quests          Quest[]
   moments         Moment[]
+  intimacyEvents  IntimacyEvent[]
 
   @@index([pairCode])
+}
+
+model IntimacyEvent {
+  id        String            @id @db.VarChar(32)
+  coupleId  String            @db.VarChar(32)
+  userId    String?           @db.VarChar(32)
+  type      IntimacyEventType
+  points    Int
+  dedupeKey String            @db.VarChar(140)
+  meta      Json?             @db.JsonB
+  createdAt DateTime          @default(now())
+
+  couple    Couple            @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([coupleId, dedupeKey])
+  @@index([coupleId, createdAt, id(sort: Desc)])
+  @@index([userId, createdAt, id(sort: Desc)])
 }
 
 model PairRequest {

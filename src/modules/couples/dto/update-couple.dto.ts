@@ -1,5 +1,4 @@
-import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsOptional, Min } from 'class-validator';
+import { IsDateString, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateCoupleDto {
@@ -7,11 +6,4 @@ export class UpdateCoupleDto {
   @IsOptional()
   @IsDateString()
   anniversaryDate?: string;
-
-  @ApiPropertyOptional({ example: 200 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  intimacyScore?: number;
 }
