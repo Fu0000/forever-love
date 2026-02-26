@@ -26,12 +26,7 @@ export class AiService {
     const timeoutMs = this.getRequestTimeoutMs();
 
     return new Promise((resolve, reject) => {
-      let req: http.ClientRequest;
-      const absoluteTimer = setTimeout(() => {
-        req?.destroy(new Error('timeout'));
-      }, timeoutMs);
-
-      req = client.request(
+      const req = client.request(
         {
           method: 'POST',
           protocol: url.protocol,
@@ -57,6 +52,10 @@ export class AiService {
           });
         },
       );
+
+      const absoluteTimer = setTimeout(() => {
+        req.destroy(new Error('timeout'));
+      }, timeoutMs);
 
       req.on('close', () => clearTimeout(absoluteTimer));
       req.on('error', (err) => {
