@@ -70,7 +70,7 @@ export class AiService {
   }
 
   private getModel(): string {
-    return process.env.OPENAI_MODEL ?? 'GPT-5.3 Codex';
+    return process.env.OPENAI_MODEL ?? 'GPT-5.2 Codex';
   }
 
   private async chat(system: string, user: string): Promise<string> {
