@@ -43,6 +43,7 @@ services:
     env_file:
       - .env
     environment:
+      NODE_OPTIONS: --dns-result-order=ipv4first
       DATABASE_URL: postgresql://couple:couple@postgres:5432/couple_app?schema=public
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
