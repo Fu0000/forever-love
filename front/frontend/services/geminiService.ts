@@ -69,3 +69,19 @@ export const generateDateIdeas = async (interests: string): Promise<string[]> =>
     return ["公园野餐", "参观博物馆", "日落散步"];
   }
 };
+
+export const polishText = async (
+  text: string,
+  scene: 'note' | 'moment' | 'quest' | 'generic' = 'generic',
+): Promise<string> => {
+  try {
+    const result = await apiRequest<{ text: string }>('/ai/polish', {
+      text,
+      scene,
+    });
+    return result.text?.trim() || text;
+  } catch (error) {
+    console.error('Error polishing text:', error);
+    return text;
+  }
+};

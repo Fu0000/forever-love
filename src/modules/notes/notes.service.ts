@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { ListNotesDto } from './dto/list-notes.dto';
 import { generateEntityId } from '../../common/utils/id';
+import { UpdateNoteDto } from './dto/update-note.dto';
 
 @Injectable()
 export class NotesService {
@@ -160,5 +161,79 @@ export class NotesService {
 
     await this.couplesService.assertMember(note.coupleId, userId);
     await this.prisma.note.delete({ where: { id: noteId } });
+  }
+
+  async update(
+    noteId: string,
+    actorUserId: string,
+    dto: UpdateNoteDto,
+  ): Promise<{
+    id: string;
+    content: string;
+    authorId: string;
+    createdAt: string;
+    color: string | null;
+    media: { url: string; type: string } | null;
+  }> {
+    const note = await this.prisma.note.findUnique({
+      where: { id: noteId },
+      select: {
+        id: true,
+        coupleId: true,
+        authorId: true,
+        createdAt: true,
+      },
+    });
+
+    if (!note) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Note not found',
+      );
+    }
+
+    await this.couplesService.assertMember(note.coupleId, actorUserId);
+    if (note.authorId !== actorUserId) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Only the author can edit this note',
+      );
+    }
+
+    const updated = await this.prisma.note.update({
+      where: { id: noteId },
+      data: {
+        content: dto.content,
+        color: dto.color === null ? null : dto.color,
+        mediaUrl:
+          dto.media === null
+            ? null
+            : dto.media?.url
+              ? dto.media.url
+              : undefined,
+        mediaType:
+          dto.media === null
+            ? null
+            : dto.media?.type
+              ? dto.media.type
+              : undefined,
+      },
+    });
+
+    return {
+      id: updated.id,
+      content: updated.content,
+      authorId: updated.authorId,
+      createdAt: updated.createdAt.toISOString(),
+      color: updated.color,
+      media: updated.mediaUrl
+        ? {
+            url: updated.mediaUrl,
+            type: updated.mediaType ?? 'image',
+          }
+        : null,
+    };
   }
 }

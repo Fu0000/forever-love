@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -16,6 +17,7 @@ import type { AuthenticatedUser } from '../../common/decorators/current-user.dec
 import type { Response } from 'express';
 import { CreateMomentDto } from './dto/create-moment.dto';
 import { ListMomentsDto } from './dto/list-moments.dto';
+import { UpdateMomentDto } from './dto/update-moment.dto';
 import { MomentsService } from './moments.service';
 
 @ApiTags('Moments')
@@ -82,5 +84,23 @@ export class MomentsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.momentsService.remove(momentId, user.userId);
+  }
+
+  @Patch('moments/:momentId')
+  update(
+    @Param('momentId') momentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateMomentDto,
+  ): Promise<{
+    id: string;
+    createdBy: string;
+    title: string;
+    description: string | null;
+    date: string;
+    imageUrl: string;
+    tags: string[];
+    createdAt: string;
+  }> {
+    return this.momentsService.update(momentId, user.userId, dto);
   }
 }

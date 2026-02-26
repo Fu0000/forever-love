@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Res,
@@ -16,6 +17,7 @@ import type { AuthenticatedUser } from '../../common/decorators/current-user.dec
 import type { Response } from 'express';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { ListNotesDto } from './dto/list-notes.dto';
+import { UpdateNoteDto } from './dto/update-note.dto';
 import { NotesService } from './notes.service';
 
 @ApiTags('Notes')
@@ -74,5 +76,21 @@ export class NotesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     return this.notesService.remove(noteId, user.userId);
+  }
+
+  @Patch('notes/:noteId')
+  update(
+    @Param('noteId') noteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateNoteDto,
+  ): Promise<{
+    id: string;
+    content: string;
+    authorId: string;
+    createdAt: string;
+    color: string | null;
+    media: { url: string; type: string } | null;
+  }> {
+    return this.notesService.update(noteId, user.userId, dto);
   }
 }

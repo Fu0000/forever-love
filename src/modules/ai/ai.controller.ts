@@ -4,6 +4,7 @@ import { AiService } from './ai.service';
 import { CupidAdviceDto } from './dto/cupid-advice.dto';
 import { CupidLoveNoteDto } from './dto/cupid-love-note.dto';
 import { CupidDateIdeasDto } from './dto/cupid-date-ideas.dto';
+import { PolishTextDto } from './dto/polish-text.dto';
 
 @ApiTags('AI')
 @ApiBearerAuth()
@@ -27,5 +28,10 @@ export class AiController {
   async dateIdeas(@Body() dto: CupidDateIdeasDto): Promise<string[]> {
     return this.aiService.cupidDateIdeas(dto.interests);
   }
-}
 
+  @Post('polish')
+  async polish(@Body() dto: PolishTextDto): Promise<{ text: string }> {
+    const text = await this.aiService.polishText(dto.text, dto.scene ?? 'generic');
+    return { text };
+  }
+}

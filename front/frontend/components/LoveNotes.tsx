@@ -1,9 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Sparkles, Trash2, Image as ImageIcon, X, Heart, Music, Calendar } from 'lucide-react';
+import {
+  Plus,
+  Sparkles,
+  Trash2,
+  Image as ImageIcon,
+  X,
+  Heart,
+  Music,
+  Calendar,
+  Pencil,
+  Wand2,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoveNote, UserFrontend } from '../types';
 import { Button } from './ui/Button';
-import { generateLoveNoteSuggestion } from '../services/geminiService';
+import { generateLoveNoteSuggestion, polishText } from '../services/geminiService';
 import { storageService } from '../services/storage';
 import { UserBadge } from './ui/UserBadge';
 
@@ -13,6 +24,10 @@ interface LoveNotesProps {
   partnerUser: UserFrontend;
   onAddNote: (note: LoveNote) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  onUpdateNote: (
+    id: string,
+    patch: Partial<LoveNote> & { removeMedia?: boolean },
+  ) => Promise<void>;
 }
 
 const NOTE_COLORS = [
@@ -30,16 +45,55 @@ const resolveNoteColor = (color?: string) => {
   return color;
 };
 
-export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partnerUser, onAddNote, onDeleteNote }) => {
+export const LoveNotes: React.FC<LoveNotesProps> = ({
+  notes,
+  currentUser,
+  partnerUser,
+  onAddNote,
+  onDeleteNote,
+  onUpdateNote,
+}) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [newNoteText, setNewNoteText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [existingMediaUrl, setExistingMediaUrl] = useState<string | null>(null);
+  const [existingMediaType, setExistingMediaType] = useState<'image' | 'video' | null>(null);
+  const [removeExistingMedia, setRemoveExistingMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const beginCreate = () => {
+    setEditingNoteId(null);
+    setNewNoteText('');
+    setSelectedColorIdx(0);
+    setExistingMediaUrl(null);
+    setExistingMediaType(null);
+    setRemoveExistingMedia(false);
+    setMediaFile(null);
+    setMediaPreviewUrl(null);
+    setSubmitError(null);
+    setIsCreating(true);
+  };
+
+  const beginEdit = (note: LoveNote) => {
+    setEditingNoteId(note.id);
+    setNewNoteText(note.content ?? '');
+    const idx = NOTE_COLORS.findIndex((c) => c.id === note.color);
+    setSelectedColorIdx(idx >= 0 ? idx : 0);
+    setExistingMediaUrl(note.mediaUrl ?? null);
+    setExistingMediaType((note.mediaType as 'image' | 'video' | undefined) ?? null);
+    setRemoveExistingMedia(false);
+    setMediaFile(null);
+    setMediaPreviewUrl(null);
+    setSubmitError(null);
+    setIsCreating(true);
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -48,11 +102,21 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
     setIsGenerating(false);
   };
 
+  const handlePolish = async () => {
+    if (isPolishing) return;
+    if (!newNoteText.trim()) return;
+    setIsPolishing(true);
+    const polished = await polishText(newNoteText, 'note');
+    setNewNoteText(polished);
+    setIsPolishing(false);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setMediaFile(file);
       setMediaPreviewUrl(URL.createObjectURL(file));
+      setRemoveExistingMedia(false);
     }
   };
 
@@ -70,12 +134,15 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
     }
     setMediaPreviewUrl(null);
     setMediaFile(null);
+    if (existingMediaUrl) {
+      setRemoveExistingMedia(true);
+    }
   };
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setSubmitError(null);
-    if (!newNoteText.trim() && !mediaFile) return;
+    if (!newNoteText.trim() && !mediaFile && !existingMediaUrl) return;
 
     setIsSubmitting(true);
     let uploadedUrl: string | undefined;
@@ -84,21 +151,34 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
         uploadedUrl = await storageService.uploadFile(mediaFile);
       }
 
-      const newNote: LoveNote = {
-        id: Date.now().toString(),
-        coupleId: '', // Backend handles
-        content: newNoteText,
-        authorId: currentUser.id,
-        createdAt: new Date().toISOString(),
-        color: NOTE_COLORS[selectedColorIdx].id,
-        mediaUrl: uploadedUrl,
-        mediaType: uploadedUrl ? 'image' : undefined,
-      };
+      if (editingNoteId) {
+        await onUpdateNote(editingNoteId, {
+          content: newNoteText,
+          color: NOTE_COLORS[selectedColorIdx].id,
+          ...(uploadedUrl ? { mediaUrl: uploadedUrl, mediaType: 'image' } : {}),
+          ...(removeExistingMedia ? { removeMedia: true } : {}),
+        });
+      } else {
+        const newNote: LoveNote = {
+          id: Date.now().toString(),
+          coupleId: '', // Backend handles
+          content: newNoteText,
+          authorId: currentUser.id,
+          createdAt: new Date().toISOString(),
+          color: NOTE_COLORS[selectedColorIdx].id,
+          mediaUrl: uploadedUrl,
+          mediaType: uploadedUrl ? 'image' : undefined,
+        };
 
-      await onAddNote(newNote);
+        await onAddNote(newNote);
+      }
       setNewNoteText('');
       clearMedia();
       setIsCreating(false);
+      setEditingNoteId(null);
+      setExistingMediaUrl(null);
+      setExistingMediaType(null);
+      setRemoveExistingMedia(false);
     } catch (e) {
       console.error('Failed to submit note', e);
       setSubmitError('发布失败，请检查网络或稍后再试');
@@ -117,7 +197,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
         <motion.button 
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setIsCreating(!isCreating)} 
+          onClick={() => (isCreating ? setIsCreating(false) : beginCreate())} 
           className="bg-rose-500 text-white px-6 py-2 rounded-full font-black text-sm shadow-lg shadow-rose-200 flex items-center gap-2"
           data-testid="note-create-toggle"
         >
@@ -135,7 +215,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                将以你发布
+                {editingNoteId ? '编辑日记' : '将以你发布'}
               </div>
               <UserBadge
                 name={currentUser.name}
@@ -160,6 +240,23 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
                   <X size={16} />
                 </button>
                 <img src={mediaPreviewUrl} alt="Upload" className="w-full h-full object-cover" />
+              </div>
+            )}
+            {!mediaPreviewUrl && existingMediaUrl && !removeExistingMedia && (
+              <div className="relative mb-4 rounded-[1.5rem] overflow-hidden max-h-48 w-full shadow-inner bg-gray-50">
+                <button 
+                  onClick={clearMedia}
+                  className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 z-10 backdrop-blur-sm"
+                  type="button"
+                  title="移除图片/视频"
+                >
+                  <X size={16} />
+                </button>
+                {existingMediaType === 'video' ? (
+                  <video src={existingMediaUrl} className="w-full h-full object-cover" controls />
+                ) : (
+                  <img src={existingMediaUrl} alt="Existing media" className="w-full h-full object-cover" />
+                )}
               </div>
             )}
             
@@ -199,13 +296,23 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
                   {isGenerating ? <Sparkles className="animate-spin" size={20} /> : <Sparkles size={20} />}
                 </Button>
                 <Button
+                  variant="secondary"
+                  size="md"
+                  className="rounded-full w-12 h-12 !p-0"
+                  onClick={handlePolish}
+                  disabled={isPolishing || !newNoteText.trim()}
+                  title="AI 一键润色"
+                >
+                  {isPolishing ? <Wand2 className="animate-spin" size={20} /> : <Wand2 size={20} />}
+                </Button>
+                <Button
                   size="md"
                   className="rounded-full px-8 font-black"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
                   data-testid="note-submit"
                 >
-                  {isSubmitting ? '发布中...' : '发布'}
+                  {isSubmitting ? '处理中...' : (editingNoteId ? '保存' : '发布')}
                 </Button>
               </div>
             </div>
@@ -259,13 +366,25 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({ notes, currentUser, partne
             <div className="flex justify-between items-end mt-4">
               <div />
               {note.authorId === currentUser.id && (
-                <button 
-                  onClick={() => void onDeleteNote(note.id)}
-                  className="text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-white/50 rounded-full"
-                  data-testid="note-delete"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => beginEdit(note)}
+                    className="text-gray-500 p-2 hover:bg-white/50 rounded-full"
+                    title="编辑"
+                    type="button"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button 
+                    onClick={() => void onDeleteNote(note.id)}
+                    className="text-rose-400 p-2 hover:bg-white/50 rounded-full"
+                    data-testid="note-delete"
+                    title="删除"
+                    type="button"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               )}
             </div>
             {/* Decorative Tape */}

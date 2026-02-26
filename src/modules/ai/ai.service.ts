@@ -132,4 +132,27 @@ export class AiService {
         .slice(0, 3);
     }
   }
+
+  async polishText(
+    text: string,
+    scene: 'note' | 'moment' | 'quest' | 'generic' = 'generic',
+  ): Promise<string> {
+    const prefix =
+      scene === 'note'
+        ? '恋爱日记'
+        : scene === 'moment'
+          ? '甜蜜瞬间'
+          : scene === 'quest'
+            ? '恋爱任务'
+            : '文本';
+
+    return this.chat(
+      `你是一位中文写作润色编辑。请在**不改变原意**的前提下，润色下面这段${prefix}内容：\n` +
+        `- 保持关键信息与事实不变\n` +
+        `- 语气更自然、更好读、更有氛围\n` +
+        `- 不要加入原文没有的新情节\n` +
+        `- 输出仅包含润色后的正文，不要解释`,
+      text,
+    );
+  }
 }

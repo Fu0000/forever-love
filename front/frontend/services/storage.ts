@@ -495,6 +495,25 @@ export const storageService = {
     return mapNoteFromApi(created);
   },
 
+  updateNote: async (
+    noteId: string,
+    patch: {
+      content?: string;
+      color?: string | null;
+      media?: { url: string; type: 'image' | 'video' } | null;
+    },
+  ): Promise<LoveNote> => {
+    const updated = await apiRequest(`/notes/${noteId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(patch.content !== undefined ? { content: patch.content } : {}),
+        ...(patch.color !== undefined ? { color: patch.color } : {}),
+        ...(patch.media !== undefined ? { media: patch.media } : {}),
+      }),
+    });
+    return mapNoteFromApi(updated);
+  },
+
   deleteNote: async (noteId: string): Promise<void> => {
     return apiRequest(`/notes/${noteId}`, {
       method: 'DELETE',
@@ -563,6 +582,22 @@ export const storageService = {
         date: moment.date, // ISO Date string
         imageUrl: moment.imageUrl,
         tags: moment.tags
+      }),
+    });
+  },
+
+  updateMoment: async (
+    momentId: string,
+    patch: Partial<Moment>,
+  ): Promise<Moment> => {
+    return apiRequest(`/moments/${momentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+        ...(patch.description !== undefined ? { description: patch.description } : {}),
+        ...(patch.date !== undefined ? { date: patch.date } : {}),
+        ...(patch.imageUrl !== undefined ? { imageUrl: patch.imageUrl } : {}),
+        ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
       }),
     });
   },

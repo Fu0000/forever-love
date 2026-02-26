@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Circle, Gift, Coffee, MessageCircleHeart, HandHeart, Plus, Trash2, Edit2, X, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, Gift, Coffee, MessageCircleHeart, HandHeart, Plus, Trash2, Edit2, X, Calendar, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Quest, UserFrontend } from '../types';
 import { clsx } from 'clsx';
 import { Button } from './ui/Button';
 import { UserBadge } from './ui/UserBadge';
+import { polishText } from '../services/geminiService';
 
 interface QuestsProps {
   quests: Quest[];
@@ -38,6 +39,7 @@ export const Quests: React.FC<QuestsProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [viewingQuest, setViewingQuest] = useState<Quest | null>(null);
+  const [isPolishing, setIsPolishing] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -52,6 +54,19 @@ export const Quests: React.FC<QuestsProps> = ({
     setType('quality_time');
     setEditingQuest(null);
     setIsCreating(false);
+  };
+
+  const handlePolish = async () => {
+    if (isPolishing) return;
+    if (!title.trim() && !description.trim()) return;
+    setIsPolishing(true);
+    if (title.trim()) {
+      setTitle(await polishText(title, 'quest'));
+    }
+    if (description.trim()) {
+      setDescription(await polishText(description, 'quest'));
+    }
+    setIsPolishing(false);
   };
 
   const resolveUser = (userId?: string | null): UserFrontend | null => {
@@ -186,6 +201,15 @@ export const Quests: React.FC<QuestsProps> = ({
                 </div>
                 <Button className="w-full py-3 rounded-xl mt-2" onClick={handleSubmit} data-testid="quest-submit">
                   {editingQuest ? '保存修改' : '发布任务'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="w-full py-3 rounded-xl"
+                  onClick={handlePolish}
+                  disabled={isPolishing || (!title.trim() && !description.trim())}
+                >
+                  {isPolishing ? '润色中...' : 'AI 一键润色'}
+                  <Wand2 size={16} className="ml-2" />
                 </Button>
               </div>
             </div>

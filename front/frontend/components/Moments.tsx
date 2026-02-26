@@ -9,16 +9,20 @@ import {
   Trash2,
   Maximize2,
   ChevronLeft,
+  Pencil,
+  Wand2,
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { storageService } from '../services/storage';
 import { UserBadge } from './ui/UserBadge';
+import { polishText } from '../services/geminiService';
 
 interface MomentsProps {
   moments: Moment[];
   currentUser: UserFrontend;
   partnerUser: UserFrontend;
   onAddMoment: (moment: Moment) => Promise<void>;
+  onUpdateMoment: (id: string, patch: Partial<Moment>) => Promise<void>;
   onDeleteMoment: (id: string) => Promise<void>;
 }
 
@@ -27,12 +31,14 @@ export const Moments: React.FC<MomentsProps> = ({
   currentUser,
   partnerUser,
   onAddMoment,
+  onUpdateMoment,
   onDeleteMoment,
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPolishing, setIsPolishing] = useState(false);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -43,11 +49,31 @@ export const Moments: React.FC<MomentsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const defaultImageUrl = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80';
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTags, setEditTags] = useState('');
+  const [editImagePreviewUrl, setEditImagePreviewUrl] = useState<string | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editPolishing, setEditPolishing] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
       setImagePreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditImageFile(file);
+      setEditImagePreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -57,10 +83,47 @@ export const Moments: React.FC<MomentsProps> = ({
     };
   }, [imagePreviewUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (editImagePreviewUrl) URL.revokeObjectURL(editImagePreviewUrl);
+    };
+  }, [editImagePreviewUrl]);
+
   const clearImage = () => {
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(null);
     setImageFile(null);
+  };
+
+  const clearEditImage = () => {
+    if (editImagePreviewUrl) URL.revokeObjectURL(editImagePreviewUrl);
+    setEditImagePreviewUrl(null);
+    setEditImageFile(null);
+  };
+
+  const beginEdit = () => {
+    if (!viewingMoment) return;
+    setEditOpen(true);
+    setEditError(null);
+    setEditTitle(viewingMoment.title ?? '');
+    setEditDescription(viewingMoment.description ?? '');
+    setEditDate(viewingMoment.date ?? new Date().toISOString().split('T')[0]);
+    setEditTags((viewingMoment.tags ?? []).join(' '));
+    setEditImagePreviewUrl(null);
+    setEditImageFile(null);
+  };
+
+  const handlePolishCreate = async () => {
+    if (isPolishing) return;
+    if (!title.trim() && !description.trim()) return;
+    setIsPolishing(true);
+    if (title.trim()) {
+      setTitle(await polishText(title, 'moment'));
+    }
+    if (description.trim()) {
+      setDescription(await polishText(description, 'moment'));
+    }
+    setIsPolishing(false);
   };
 
   const handleSubmit = async () => {
@@ -101,6 +164,50 @@ export const Moments: React.FC<MomentsProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!viewingMoment) return;
+    if (editSubmitting) return;
+    setEditError(null);
+    if (!editTitle.trim() || !editDescription.trim()) return;
+
+    setEditSubmitting(true);
+    try {
+      const uploadedUrl = editImageFile ? await storageService.uploadFile(editImageFile) : null;
+      const patch: Partial<Moment> = {
+        title: editTitle,
+        description: editDescription,
+        date: editDate,
+        tags: editTags
+          .split(' ')
+          .filter((t) => t.trim())
+          .map((t) => t.replace('#', '')),
+        ...(uploadedUrl ? { imageUrl: uploadedUrl } : {}),
+      };
+      await onUpdateMoment(viewingMoment.id, patch);
+      setViewingMoment((prev) => (prev ? { ...prev, ...patch, imageUrl: patch.imageUrl ?? prev.imageUrl } : prev));
+      setEditOpen(false);
+      clearEditImage();
+    } catch (e) {
+      console.error('Failed to update moment', e);
+      setEditError('保存失败，请稍后重试');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handlePolishEdit = async () => {
+    if (editPolishing) return;
+    if (!editTitle.trim() && !editDescription.trim()) return;
+    setEditPolishing(true);
+    if (editTitle.trim()) {
+      setEditTitle(await polishText(editTitle, 'moment'));
+    }
+    if (editDescription.trim()) {
+      setEditDescription(await polishText(editDescription, 'moment'));
+    }
+    setEditPolishing(false);
   };
 
   return (
@@ -191,9 +298,20 @@ export const Moments: React.FC<MomentsProps> = ({
                 onChange={handleFileChange}
               />
 
-              <Button className="w-full mt-2" onClick={handleSubmit} disabled={isSubmitting} data-testid="moment-submit">
-                {isSubmitting ? '发布中...' : '记录美好时刻'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={handlePolishCreate}
+                  disabled={isPolishing || (!title.trim() && !description.trim())}
+                >
+                  {isPolishing ? '润色中...' : 'AI 一键润色'}
+                  <Wand2 size={16} className="ml-2" />
+                </Button>
+                <Button className="flex-1" onClick={handleSubmit} disabled={isSubmitting} data-testid="moment-submit">
+                  {isSubmitting ? '发布中...' : '记录美好时刻'}
+                </Button>
+              </div>
               {submitError && <div className="text-sm text-red-500 font-bold">{submitError}</div>}
             </div>
           </motion.div>
@@ -221,7 +339,18 @@ export const Moments: React.FC<MomentsProps> = ({
                 <div className="text-white/80 text-xs font-black tracking-widest uppercase">
                   旅程详情
                 </div>
-                <div className="w-[62px]" />
+                {viewingMoment.createdBy === currentUser.id ? (
+                  <button
+                    type="button"
+                    onClick={beginEdit}
+                    className="text-white/80 hover:text-white flex items-center gap-1 font-black"
+                    title="编辑"
+                  >
+                    <Pencil size={18} /> 编辑
+                  </button>
+                ) : (
+                  <div className="w-[62px]" />
+                )}
               </div>
             </div>
 
@@ -234,6 +363,110 @@ export const Moments: React.FC<MomentsProps> = ({
                 />
               )}
               <div className="w-full max-w-md text-white">
+                {editOpen && (
+                  <div className="mb-6 bg-white rounded-3xl p-4 text-gray-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-black">编辑动态</div>
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-600"
+                        onClick={() => {
+                          setEditOpen(false);
+                          setEditError(null);
+                          clearEditImage();
+                        }}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none"
+                        placeholder="标题"
+                      />
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="w-full h-24 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none resize-none"
+                        placeholder="文案"
+                      />
+                      <div className="flex gap-3">
+                        <input
+                          type="date"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none text-gray-600"
+                        />
+                        <input
+                          value={editTags}
+                          onChange={(e) => setEditTags(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none"
+                          placeholder="标签 (空格分隔)"
+                        />
+                      </div>
+
+                      {editImagePreviewUrl ? (
+                        <div className="relative rounded-xl overflow-hidden h-40 w-full bg-gray-100">
+                          <img
+                            src={editImagePreviewUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={clearEditImage}
+                            className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
+                            type="button"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => editFileInputRef.current?.click()}
+                          className="border-2 border-dashed border-gray-300 rounded-xl h-20 flex items-center justify-center text-gray-400 cursor-pointer hover:border-rose-300 hover:text-rose-500 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <ImageIcon size={20} />
+                            <span className="text-sm">更换照片（可选）</span>
+                          </div>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        ref={editFileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleEditFileChange}
+                      />
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          className="flex-1"
+                          onClick={handlePolishEdit}
+                          disabled={editPolishing || (!editTitle.trim() && !editDescription.trim())}
+                        >
+                          {editPolishing ? '润色中...' : 'AI 一键润色'}
+                          <Wand2 size={16} className="ml-2" />
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={handleSaveEdit}
+                          disabled={editSubmitting}
+                        >
+                          {editSubmitting ? '保存中...' : '保存'}
+                        </Button>
+                      </div>
+                      {editError && (
+                        <div className="text-sm text-red-500 font-bold">
+                          {editError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-rose-400 font-bold mb-2 uppercase tracking-wide text-sm">
                   <Calendar size={14} />
                   {new Date(viewingMoment.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}

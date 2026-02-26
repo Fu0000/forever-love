@@ -152,6 +152,38 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateNote = async (
+    noteId: string,
+    patch: Partial<LoveNote> & { removeMedia?: boolean },
+  ): Promise<void> => {
+    if (!coupleData) return;
+    try {
+      const updated = await storageService.updateNote(noteId, {
+        content: patch.content,
+        color: patch.color ?? undefined,
+        media: patch.removeMedia
+          ? null
+          : patch.mediaUrl
+            ? {
+                url: patch.mediaUrl,
+                type: (patch.mediaType as 'image' | 'video' | undefined) ?? 'image',
+              }
+            : undefined,
+      });
+
+      setCoupleData((prev) =>
+        prev
+          ? {
+              ...prev,
+              notes: prev.notes.map((n) => (n.id === updated.id ? updated : n)),
+            }
+          : null,
+      );
+    } catch (e) {
+      console.error('Failed to update note', e);
+    }
+  };
+
   const handleDeleteNote = async (id: string): Promise<void> => {
     if (!coupleData) return;
     try {
@@ -185,6 +217,26 @@ const App: React.FC = () => {
       await storageService.updateCouple(coupleData.id, { intimacyScore: coupleData.intimacyScore + 10 });
     } catch (e) {
       console.error("Failed to add moment", e);
+    }
+  };
+
+  const handleUpdateMoment = async (
+    momentId: string,
+    patch: Partial<Moment>,
+  ): Promise<void> => {
+    if (!coupleData) return;
+    try {
+      const updated = await storageService.updateMoment(momentId, patch);
+      setCoupleData((prev) =>
+        prev
+          ? {
+              ...prev,
+              moments: prev.moments.map((m) => (m.id === updated.id ? updated : m)),
+            }
+          : null,
+      );
+    } catch (e) {
+      console.error('Failed to update moment', e);
     }
   };
 
@@ -339,7 +391,16 @@ const App: React.FC = () => {
       case 'dashboard': 
         return <Dashboard data={coupleData} currentUser={currentUser} onUpdateAnniversary={handleUpdateAnniversary} onNavigate={setActiveTab} />;
       case 'notes': 
-        return <LoveNotes notes={coupleData.notes} currentUser={currentUser} partnerUser={partnerUser} onAddNote={handleAddNote} onDeleteNote={handleDeleteNote} />;
+        return (
+          <LoveNotes
+            notes={coupleData.notes}
+            currentUser={currentUser}
+            partnerUser={partnerUser}
+            onAddNote={handleAddNote}
+            onUpdateNote={handleUpdateNote}
+            onDeleteNote={handleDeleteNote}
+          />
+        );
       case 'quests': 
         return <Quests 
           quests={coupleData.quests} 
@@ -359,6 +420,7 @@ const App: React.FC = () => {
             currentUser={currentUser}
             partnerUser={partnerUser}
             onAddMoment={handleAddMoment}
+            onUpdateMoment={handleUpdateMoment}
             onDeleteMoment={handleDeleteMoment}
           />
         );

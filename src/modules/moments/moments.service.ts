@@ -9,6 +9,7 @@ import { CouplesService } from '../couples/couples.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMomentDto } from './dto/create-moment.dto';
 import { ListMomentsDto } from './dto/list-moments.dto';
+import { UpdateMomentDto } from './dto/update-moment.dto';
 
 @Injectable()
 export class MomentsService {
@@ -173,5 +174,59 @@ export class MomentsService {
 
     await this.couplesService.assertMember(moment.coupleId, actorUserId);
     await this.prisma.moment.delete({ where: { id: momentId } });
+  }
+
+  async update(
+    momentId: string,
+    actorUserId: string,
+    dto: UpdateMomentDto,
+  ): Promise<{
+    id: string;
+    createdBy: string;
+    title: string;
+    description: string | null;
+    date: string;
+    imageUrl: string;
+    tags: string[];
+    createdAt: string;
+  }> {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id: momentId },
+      select: {
+        id: true,
+        coupleId: true,
+        createdBy: true,
+      },
+    });
+
+    if (!moment) {
+      throw new AppException(
+        HttpStatus.NOT_FOUND,
+        'NOT_FOUND',
+        'Moment not found',
+      );
+    }
+
+    await this.couplesService.assertMember(moment.coupleId, actorUserId);
+    if (moment.createdBy !== actorUserId) {
+      throw new AppException(
+        HttpStatus.FORBIDDEN,
+        'FORBIDDEN',
+        'Only the author can edit this moment',
+      );
+    }
+
+    const updated = await this.prisma.moment.update({
+      where: { id: momentId },
+      data: {
+        title: dto.title,
+        description: dto.description === null ? null : dto.description,
+        date: dto.date ? new Date(dto.date) : undefined,
+        imageUrl: dto.imageUrl,
+        tags: dto.tags,
+      },
+    });
+
+    return this.mapMoment(updated);
   }
 }
