@@ -304,6 +304,7 @@ export const Moments: React.FC<MomentsProps> = ({
                   className="flex-1"
                   onClick={handlePolishCreate}
                   disabled={isPolishing || (!title.trim() && !description.trim())}
+                  data-testid="moment-polish"
                 >
                   {isPolishing ? '润色中...' : 'AI 一键润色'}
                   <Wand2 size={16} className="ml-2" />
@@ -345,6 +346,7 @@ export const Moments: React.FC<MomentsProps> = ({
                     onClick={beginEdit}
                     className="text-white/80 hover:text-white flex items-center gap-1 font-black"
                     title="编辑"
+                    data-testid="moment-edit-open"
                   >
                     <Pencil size={18} /> 编辑
                   </button>
@@ -385,12 +387,14 @@ export const Moments: React.FC<MomentsProps> = ({
                         onChange={(e) => setEditTitle(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none"
                         placeholder="标题"
+                        data-testid="moment-edit-title-input"
                       />
                       <textarea
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         className="w-full h-24 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none resize-none"
                         placeholder="文案"
+                        data-testid="moment-edit-desc-input"
                       />
                       <div className="flex gap-3">
                         <input
@@ -398,12 +402,14 @@ export const Moments: React.FC<MomentsProps> = ({
                           value={editDate}
                           onChange={(e) => setEditDate(e.target.value)}
                           className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none text-gray-600"
+                          data-testid="moment-edit-date-input"
                         />
                         <input
                           value={editTags}
                           onChange={(e) => setEditTags(e.target.value)}
                           className="flex-1 px-3 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-200 outline-none"
                           placeholder="标签 (空格分隔)"
+                          data-testid="moment-edit-tags-input"
                         />
                       </div>
 
@@ -447,6 +453,7 @@ export const Moments: React.FC<MomentsProps> = ({
                           className="flex-1"
                           onClick={handlePolishEdit}
                           disabled={editPolishing || (!editTitle.trim() && !editDescription.trim())}
+                          data-testid="moment-edit-polish"
                         >
                           {editPolishing ? '润色中...' : 'AI 一键润色'}
                           <Wand2 size={16} className="ml-2" />
@@ -455,6 +462,7 @@ export const Moments: React.FC<MomentsProps> = ({
                           className="flex-1"
                           onClick={handleSaveEdit}
                           disabled={editSubmitting}
+                          data-testid="moment-edit-submit"
                         >
                           {editSubmitting ? '保存中...' : '保存'}
                         </Button>

@@ -548,7 +548,6 @@ export const storageService = {
         description: data.description,
         points: data.points,
         type: data.type,
-        status: data.status // ACTIVE or COMPLETED
       }),
     });
     return normalizeQuest(updated);

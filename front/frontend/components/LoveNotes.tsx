@@ -292,6 +292,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({
                   className="rounded-full w-12 h-12 !p-0"
                   onClick={handleGenerate}
                   disabled={isGenerating}
+                  data-testid="note-generate"
                 >
                   {isGenerating ? <Sparkles className="animate-spin" size={20} /> : <Sparkles size={20} />}
                 </Button>
@@ -302,6 +303,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({
                   onClick={handlePolish}
                   disabled={isPolishing || !newNoteText.trim()}
                   title="AI 一键润色"
+                  data-testid="note-polish"
                 >
                   {isPolishing ? <Wand2 className="animate-spin" size={20} /> : <Wand2 size={20} />}
                 </Button>
@@ -372,6 +374,7 @@ export const LoveNotes: React.FC<LoveNotesProps> = ({
                     className="text-gray-500 p-2 hover:bg-white/50 rounded-full"
                     title="编辑"
                     type="button"
+                    data-testid="note-edit"
                   >
                     <Pencil size={14} />
                   </button>

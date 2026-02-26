@@ -207,6 +207,7 @@ export const Quests: React.FC<QuestsProps> = ({
                   className="w-full py-3 rounded-xl"
                   onClick={handlePolish}
                   disabled={isPolishing || (!title.trim() && !description.trim())}
+                  data-testid="quest-polish"
                 >
                   {isPolishing ? '润色中...' : 'AI 一键润色'}
                   <Wand2 size={16} className="ml-2" />

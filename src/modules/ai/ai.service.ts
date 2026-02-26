@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import dns from 'node:dns';
 import { AppException } from '../../common/errors/app.exception';
 
 type ChatCompletionResponse = {
@@ -8,6 +9,13 @@ type ChatCompletionResponse = {
 
 const ensureTrailingSlash = (value: string): string =>
   value.endsWith('/') ? value : `${value}/`;
+
+try {
+  // Many VPS/Docker environments have IPv6 disabled; prefer IPv4 to avoid timeouts.
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignore if not supported by runtime.
+}
 
 @Injectable()
 export class AiService {

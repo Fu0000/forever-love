@@ -146,7 +146,13 @@ const App: React.FC = () => {
         intimacyScore: prev.intimacyScore + 5
       }) : null);
       
-      await storageService.updateCouple(coupleData.id, { intimacyScore: coupleData.intimacyScore + 5 });
+      storageService
+        .updateCouple(coupleData.id, {
+          intimacyScore: coupleData.intimacyScore + 5,
+        })
+        .catch((e) => {
+          console.error('Failed to update couple intimacy score', e);
+        });
     } catch (e) {
       console.error("Failed to add note", e);
     }
@@ -214,7 +220,13 @@ const App: React.FC = () => {
         intimacyScore: prev.intimacyScore + 10
       }) : null);
 
-      await storageService.updateCouple(coupleData.id, { intimacyScore: coupleData.intimacyScore + 10 });
+      storageService
+        .updateCouple(coupleData.id, {
+          intimacyScore: coupleData.intimacyScore + 10,
+        })
+        .catch((e) => {
+          console.error('Failed to update couple intimacy score', e);
+        });
     } catch (e) {
       console.error("Failed to add moment", e);
     }
