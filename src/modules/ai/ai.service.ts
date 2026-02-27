@@ -83,8 +83,22 @@ export class AiService {
     return key;
   }
 
+  private normalizeModel(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return trimmed;
+
+    // Some OpenAI-compatible providers expose model IDs like `gpt-5.3-codex`,
+    // while product docs may use display names like `GPT-5.3 Codex`.
+    // Normalize common display-name forms to ID-like forms.
+    if (/^gpt-/i.test(trimmed)) {
+      return trimmed.toLowerCase().replace(/\s+/g, '-');
+    }
+    return trimmed;
+  }
+
   private getModel(): string {
-    return process.env.OPENAI_MODEL ?? 'GPT-5.3 Codex';
+    const configured = process.env.OPENAI_MODEL ?? 'gpt-5.3-codex';
+    return this.normalizeModel(configured);
   }
 
   private async chat(system: string, user: string): Promise<string> {
